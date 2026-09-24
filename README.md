@@ -1,4 +1,5 @@
 # Deskside
+[![tests](https://github.com/zeezmann/deskside/actions/workflows/ci.yml/badge.svg)](https://github.com/zeezmann/deskside/actions/workflows/ci.yml)
 
 A single HTML file that holds everything a service desk engineer reaches for: the
 commands, the order to try them in, and a handful of tools that do the job in the
