@@ -1,0 +1,16 @@
+{
+  "name": "deskside",
+  "version": "1.0.0",
+  "description": "A single-file IT support toolkit. Scripts, fix-it guides and offline utilities for Windows and macOS.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  },
+  "license": "MIT"
+}
