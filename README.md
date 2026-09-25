@@ -16,7 +16,7 @@ because the guide you will want most is the one titled *No internet*.
 
 | | |
 |---|---|
-| **196 scripts** | PowerShell, macOS and Linux, each with a plain-English description of what it does and when it lies to you |
+| **202 scripts** | PowerShell, macOS and Linux, each with a plain-English description of what it does and when it lies to you |
 | **30 fix-it guides** | Numbered steps in the order an experienced engineer would actually work them |
 | **9 utilities** | Subnet calculator, password generator, file checksum, CSV inspector, error code decoder, text comparison, Windows build lookup, paste cleaner, diagram viewer |
 | **35 run-box shortcuts** | The `.msc` and `.cpl` list, click to copy |

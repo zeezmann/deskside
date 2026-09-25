@@ -130,4 +130,20 @@ test.describe('the toolkit itself', () => {
     expect(overflow).toBeLessThanOrEqual(1);
     expect(problems).toEqual([]);
   });
+
+  test('emphasis in a guide step renders, and a script id still becomes a chip', async ({ page }) => {
+    const problems = [];
+    await open(page, problems);
+    await page.click('[data-view="guides"]');
+    // Steps used to be escaped while descriptions were not, so a <b> in a step
+    // appeared as the literal characters on the page.
+    const body = await page.locator('main').innerText();
+    expect(body).not.toContain('<b>');
+    expect(body).not.toContain('</b>');
+    expect(body).not.toContain('&rsquo;');
+    expect(body).not.toContain('<span class="mono">');
+    // The chip substitution has to survive the change.
+    expect(await page.locator('.steps .chip').count()).toBeGreaterThan(20);
+    expect(problems).toEqual([]);
+  });
 });

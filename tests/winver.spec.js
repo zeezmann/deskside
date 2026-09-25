@@ -31,12 +31,14 @@ test.describe('which Windows is this', () => {
     expect(problems).toEqual([]);
   });
 
-  test('shows how old its own data is', async ({ page }) => {
+  test('states what it covers rather than how old it is', async ({ page }) => {
     const problems = [];
     await openTool(page, 'winver', problems);
-    // The whole point: the table goes stale, so it has to say when it was made.
-    await expect(page.locator('#wv-asof')).toContainText('compiled on');
+    // It used to say "compiled N days ago", which ages whether or not anything
+    // is actually wrong. Coverage is a fixed fact and never needs revisiting.
+    await expect(page.locator('#wv-asof')).toContainText('Covers Windows 10 and Windows 11 up to');
     await expect(page.locator('#wv-asof')).toContainText('learn.microsoft.com');
+    await expect(page.locator('#wv-asof')).not.toContainText('compiled');
     expect(problems).toEqual([]);
   });
 

@@ -3,6 +3,113 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.8.0] — 2026-09-25
+
+### Changed - the profile cleaner asks about presence, not age
+Age was the wrong axis entirely. What decides whether a profile can go on a
+hot-desk machine is whether its owner is sat there, not how many days have
+passed. So that is now the rule, and age is shown as information that decides
+nothing.
+
+- **It identifies the console user separately from the account running the
+  script.** These are not the same and confusing them is how you delete the
+  profile of the person watching you do it: you elevate with your own admin
+  credentials while they are signed in at the console.
+- **Protects anything the machine depends on**, not just service accounts: the
+  console user, disconnected sessions still holding files open, any account with
+  a process running right now, any account a Windows service starts as, the
+  built-in profiles, and you.
+- **Prints what it protected and why, before anything else.** A thing silently
+  withheld is worse than a thing refused out loud.
+- **`-DryRun`, and it is the default on the last line.** Prints both tables and
+  stops without asking anything. Removing `-DryRun` is a deliberate act.
+- **[A]ll now needs typing YES**, and shows the count and total first.
+
+### Fixed
+- Service accounts are reported as `.\name`, `MACHINE\name` or `DOMAIN\name`
+  depending on how the service was configured, while the profile resolves to one
+  specific form. The comparison matched on the full string only, so a service
+  account would have slipped through and been offered for deletion - breaking
+  that service days later, with nobody connecting the two events. Both the full
+  name and the bare name are compared now.
+
+## [1.7.1] — 2026-09-25
+
+### Changed - the profile cleaner stopped hiding things
+The first version skipped any profile used in the last 30 days. That number was
+arbitrary, and the approach was wrong twice over.
+
+Wrong for the job: on a hot-desk pool people rotate, their files live in Drive,
+and a profile untouched for three weeks is usually abandoned. Thirty days was a
+dedicated-machine assumption applied to a shared one.
+
+Wrong in principle: a filter that silently drops rows leaves you looking at a
+full disk with no idea what it decided not to show you.
+
+- Every deletable profile is now listed, whatever its age. The only exclusions
+  left are the ones that would be unsafe or pointless - loaded, yours, or a
+  service account.
+- Age bands instead: **stale** over 90 days, **old** over the caution line,
+  **RECENT** under it.
+- RECENT profiles are always asked about one at a time and are **skipped by
+  [A]ll**, so a careless "all" cannot take a profile somebody used yesterday.
+- The caution line is 14 days by default, which suits hot-desking. Dedicated
+  machines want `-CautionDays 60`, because somebody on long leave still wants
+  their desktop back.
+
+### Fixed
+- **The last-used date was trusting one unreliable source.** Windows updates
+  `LastUseTime` inconsistently and background work on a profile nobody has
+  signed into can move it. It now reads the last write to NTUSER.DAT as well and
+  trusts whichever is *more recent*, so the error always falls towards "still in
+  use". Where the two disagree by more than a week it shows both and says which
+  it used.
+
+## [1.7.0] — 2026-09-25
+
+### Added - clearing disk space, not just finding it
+Every disk script before this one measured. None of them cleared, which meant
+the toolkit could tell you the machine was full and then leave you to it.
+
+- **Reclaim disk space (Windows)** - every candidate with a size against it and
+  the command beside it, nothing deleted. Component store, Windows Update
+  downloads, Delivery Optimization, Windows.old, error reports, Recycle Bin,
+  hibernation file.
+- **Actually clear the safe ones (Windows)** - does the four that need nobody's
+  permission, and reports what each freed.
+- **Delete old profiles, asking about each one (Windows)** - the hot-desking
+  ticket. Elevated PowerShell, paste, and it walks every stale profile one at a
+  time with size and last-used date. Y deletes, N keeps, A does the rest, Q
+  stops, and Enter on its own means No because the safe answer should be the one
+  you get by accident. Never offers a loaded profile, your own, or a service
+  account, and ignores anything used in the last 30 days by default.
+- **Old user profiles eating a shared machine (Windows)** - the read-only
+  version, for when you only want to look.
+- **Reclaim disk space on a Mac** - including purgeable space, which is nearly
+  always Time Machine local snapshots and is why a Mac behaves as though it is
+  full while Finder insists it is not.
+- **Reclaim disk space (Linux)** - package caches, orphaned packages, old
+  kernels, the journal, old snap revisions and Docker, measured with the command
+  printed against each.
+
+### Fixed
+- **Guide steps were escaped while script descriptions were not**, so a `<b>` in
+  a step rendered as the literal characters. One rule for both now: the content
+  of this file is trusted, anything interpolated into it is not. A test asserts
+  no stray tag reaches the page.
+- The Windows disk guide told you to open Disk Cleanup by hand, in a toolkit
+  whose entire point is copy-and-run.
+- CI used actions pinned to Node 20, which GitHub has deprecated. Now on v5 of
+  each action and Node 22.
+
+### A note on how the 1.6 package broke CI
+The 1.6 archive shipped `index.html` without the `tests/` folder. The page had
+moved on and its test had not, so `winver.spec.js` was still asserting text
+removed in 1.5 and the build went red on a change that was correct. Every
+archive from here on contains the whole repository, because a partial one makes
+the two halves drift and the failure looks like a bug in the code rather than in
+the packaging.
+
 ## [1.6.0] — 2026-09-25
 
 ### Added - Linux

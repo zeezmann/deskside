@@ -943,6 +943,44 @@ df -h /
 echo "--- Biggest folders in home ---"
 du -sh ~/* 2>/dev/null | sort -h | tail -15`);
 
+S('mac-reclaim','mac','Reclaim disk space on a Mac, including purgeable',['mac'],
+'The Mac equivalent, measured rather than deleted. Includes the one that confuses everybody: <b>purgeable space</b>. Finder reports it as free, the disk behaves as though it is not, and it is nearly always Time Machine local snapshots sitting on the internal drive.',
+String.raw`
+echo "--- what the disk thinks ---"
+df -h / | tail -1
+echo
+echo "--- what macOS thinks, including purgeable ---"
+diskutil info / | grep -E "Container Free Space|Volume Free Space|Volume Used Space"
+echo
+echo "--- Time Machine local snapshots (usually the purgeable space) ---"
+tmutil listlocalsnapshots / 2>/dev/null | tail -n +2 || echo "none"
+echo
+echo "To remove them all:"
+echo "  for d in \$(tmutil listlocalsnapshots / | sed 's/.*com.apple.TimeMachine.//;s/.local//'); do"
+echo "    sudo tmutil deletelocalsnapshots \$d"
+echo "  done"
+echo
+echo "--- the usual space ---"
+for p in \
+  "$HOME/Library/Caches" \
+  "$HOME/Library/Developer/Xcode/DerivedData" \
+  "$HOME/Library/Application Support/MobileSync/Backup" \
+  "$HOME/Downloads" \
+  "$HOME/.Trash" \
+  "/Library/Caches"
+do
+  if [ -e "$p" ]; then
+    printf "%10s  %s\n" "$(du -sh "$p" 2>/dev/null | cut -f1)" "$p"
+  fi
+done
+echo
+echo "Caches and DerivedData are safe to remove - applications rebuild them."
+echo "Downloads and Trash are the user's, so ask before touching either."
+echo
+echo "  rm -rf ~/Library/Caches/*"
+echo "  rm -rf ~/Library/Developer/Xcode/DerivedData/*"`);
+
+
 S('mac-network','mac','Network, IP, DNS and Wi-Fi',['mac'],
 'Everything network in one pass. A 169.254.x.x address means DHCP failed, same as on Windows.',
 String.raw`
@@ -1563,6 +1601,321 @@ $before  = ($targets | ForEach-Object { Get-ChildItem $_ -Recurse -File -Force -
 foreach ($t in $targets) { Get-ChildItem $t -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue }
 $after   = ($targets | ForEach-Object { Get-ChildItem $_ -Recurse -File -Force -ErrorAction SilentlyContinue } | Measure-Object Length -Sum).Sum
 "Freed about {0} MB" -f [math]::Round(($before - $after) / 1MB)`);
+
+S('disk-reclaim','perf','Reclaim disk space: what can go, and how much',['admin'],
+'The big wins on a full Windows disk, measured before anything is deleted. Nothing here removes a thing - it adds up what each one would free and prints the command. Deciding what to delete on somebody else&rsquo;s machine is a decision, not a step, and you want the number before you make it.',
+String.raw`
+function Size($p) {
+  if (-not (Test-Path $p)) { return 0 }
+  (Get-ChildItem $p -Recurse -File -Force -ErrorAction SilentlyContinue |
+    Measure-Object Length -Sum).Sum
+}
+function Show($name, $bytes, $cmd) {
+  $mb = [math]::Round($bytes / 1MB)
+  '{0,-34} {1,8} MB   {2}' -f $name, $mb, $cmd
+}
+
+$free = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'").FreeSpace
+Write-Host ("Free on C: now: {0} GB" -f [math]::Round($free/1GB,1)) -ForegroundColor Cyan
+Write-Host ''
+Write-Host 'CANDIDATE                            SIZE      TO RECLAIM IT' -ForegroundColor Cyan
+
+Show 'Your temp folder'        (Size $env:TEMP)                                'use the Clear temp folders script'
+Show 'Windows temp folder'     (Size "$env:SystemRoot\Temp")                   'use the Clear temp folders script'
+Show 'Windows Update downloads' (Size "$env:SystemRoot\SoftwareDistribution\Download") 'Stop-Service wuauserv; Remove-Item "$env:SystemRoot\SoftwareDistribution\Download\*" -Recurse -Force; Start-Service wuauserv'
+Show 'Delivery Optimization cache' (Size "$env:SystemRoot\SoftwareDistribution\DeliveryOptimization") 'Delete-DeliveryOptimizationCache -Force'
+Show 'Windows.old (after an upgrade)' (Size 'C:\Windows.old')                  'cleanmgr, or it removes itself after 10 days'
+Show 'Error report queue'      (Size "$env:ProgramData\Microsoft\Windows\WER") 'safe to clear once a crash is investigated'
+Show 'Downloads folder'        (Size "$env:USERPROFILE\Downloads")             'ASK FIRST - this is their stuff'
+
+$rb = 0
+try { $rb = (Get-ChildItem 'C:\$Recycle.Bin' -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum } catch { }
+Show 'Recycle Bin (all users)' $rb 'Clear-RecycleBin -Force'
+
+$hib = 0
+if (Test-Path 'C:\hiberfil.sys') { $hib = (Get-Item 'C:\hiberfil.sys' -Force).Length }
+Show 'Hibernation file' $hib 'powercfg /h off   <- this also disables Fast Startup'
+
+Write-Host ''
+Write-Host '--- component store (WinSxS) ---' -ForegroundColor Cyan
+Write-Host 'This is the one that is usually worth gigabytes on an older build.'
+Dism.exe /Online /Cleanup-Image /AnalyzeComponentStore | Select-String 'Size|Reclaimable|Recommended'
+Write-Host ''
+Write-Host 'If it says cleanup is recommended:  Dism.exe /Online /Cleanup-Image /StartComponentCleanup'
+Write-Host 'That can take twenty minutes and cannot be interrupted safely, so not mid-call.'`);
+
+S('disk-clean-run','perf','Actually clear the safe ones',['admin','changes','risk'],
+'Does what the reclaim script only measured, for the four things that are genuinely safe to remove: Windows Update downloads, Delivery Optimization cache, the error report queue and the Recycle Bin. <b>It empties the Recycle Bin for every user on the machine</b>, so ask before you run it - people do use it as a filing system. Prints what each step freed.',
+String.raw`
+function Size($p) {
+  if (-not (Test-Path $p)) { return 0 }
+  (Get-ChildItem $p -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum
+}
+$freeBefore = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'").FreeSpace
+
+Write-Host '--- Windows Update download cache ---' -ForegroundColor Cyan
+$p = "$env:SystemRoot\SoftwareDistribution\Download"
+Write-Host ("  was {0} MB" -f [math]::Round((Size $p)/1MB))
+Stop-Service wuauserv -Force -ErrorAction SilentlyContinue
+Remove-Item "$p\*" -Recurse -Force -ErrorAction SilentlyContinue
+Start-Service wuauserv -ErrorAction SilentlyContinue
+Write-Host ("  now {0} MB" -f [math]::Round((Size $p)/1MB))
+
+Write-Host '--- Delivery Optimization cache ---' -ForegroundColor Cyan
+try { Delete-DeliveryOptimizationCache -Force -ErrorAction Stop; Write-Host '  cleared' }
+catch { Write-Host '  cmdlet not available on this build, skipped' }
+
+Write-Host '--- error report queue ---' -ForegroundColor Cyan
+$wer = "$env:ProgramData\Microsoft\Windows\WER"
+Write-Host ("  was {0} MB" -f [math]::Round((Size $wer)/1MB))
+Remove-Item "$wer\ReportQueue\*","$wer\ReportArchive\*" -Recurse -Force -ErrorAction SilentlyContinue
+
+Write-Host '--- Recycle Bin, all users ---' -ForegroundColor Cyan
+Clear-RecycleBin -Force -ErrorAction SilentlyContinue
+Write-Host '  emptied'
+
+$freeAfter = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'").FreeSpace
+Write-Host ''
+Write-Host ("Free before: {0} GB" -f [math]::Round($freeBefore/1GB,2))
+Write-Host ("Free after : {0} GB" -f [math]::Round($freeAfter/1GB,2))
+Write-Host ("Reclaimed  : {0} MB" -f [math]::Round(($freeAfter-$freeBefore)/1MB)) -ForegroundColor Green
+Write-Host ''
+Write-Host 'Still tight? The component store is the next one, and it is the big one:'
+Write-Host '  Dism.exe /Online /Cleanup-Image /StartComponentCleanup'`);
+
+S('disk-profiles','perf','Old user profiles eating a shared machine',['admin'],
+'On a shared or hot-desked machine the space is almost never the current user&rsquo;s - it is everyone who has ever logged in. Lists every profile with its size and when it was last used, so you can see at a glance that eleven people have left 4 GB each behind. Read-only; the removal command is printed per profile.',
+String.raw`
+$me = (Get-CimInstance Win32_ComputerSystem).UserName
+Get-CimInstance Win32_UserProfile -Filter "Special = False" |
+  ForEach-Object {
+    $p = $_.LocalPath
+    $size = (Get-ChildItem $p -Recurse -File -Force -ErrorAction SilentlyContinue |
+              Measure-Object Length -Sum).Sum
+    $name = Split-Path $p -Leaf
+    $acct = ''
+    try { $acct = (New-Object System.Security.Principal.SecurityIdentifier($_.SID)).Translate([System.Security.Principal.NTAccount]).Value } catch { $acct = 'deleted account' }
+    [PSCustomObject]@{
+      Profile  = $name
+      Account  = $acct
+      SizeMB   = [math]::Round($size / 1MB)
+      LastUsed = if ($_.LastUseTime) { $_.LastUseTime.ToString('yyyy-MM-dd') } else { 'unknown' }
+      Loaded   = $_.Loaded
+      SID      = $_.SID
+    }
+  } | Sort-Object SizeMB -Descending | Format-Table -AutoSize
+
+Write-Host ''
+Write-Host "Currently signed in: $me" -ForegroundColor Cyan
+Write-Host 'Never remove a profile that is Loaded = True, or one belonging to a service account.'
+Write-Host ''
+Write-Host 'To remove one, by SID, once you are sure:'
+Write-Host '  Get-CimInstance Win32_UserProfile | Where-Object SID -eq "<SID>" | Remove-CimInstance'
+Write-Host ''
+Write-Host 'Check with whoever owns the machine first. A profile holds desktop files,'
+Write-Host 'saved passwords and Outlook data, and removing it is not reversible.'`);
+
+S('disk-profiles-clean','perf','Clear everyone except the person sat at the machine',['admin','changes','risk'],
+'The hot-desking ticket, done properly. Walk up to the machine, open an elevated PowerShell, paste this. It works out who is actually sat there, protects them and anything the machine depends on, and then asks you about every other profile one at a time with its size and last-used date.<br><br><b>Run it with -DryRun first.</b> That prints both tables and stops without asking you anything, so you can see exactly what it would offer before it offers it.<br><br><b>What it protects, and tells you it protected:</b> the signed-in console user, anyone with a disconnected session still holding files, any account with a running process, any account a Windows service starts as, the built-in and system profiles, and the account you are running as. Each one is listed with the reason, because a thing silently withheld is worse than a thing refused out loud.<br><br><b>Y</b> deletes, <b>N</b> keeps, <b>A</b> does the rest after one confirmation showing the total, <b>Q</b> stops. Enter on its own means No.<br><br>Age is shown but decides nothing - you asked for presence to be the rule, and presence is the rule. A profile last used yesterday by somebody who has since moved desks is still fair game; that is your call to make with the person in front of you, not a number in a script.<br><br><b>Why it is a function.</b> A script containing Read-Host pasted into a console eats its own remaining lines as the answers to its prompts. Defining a function and calling it on the last line means the prompts wait for you.<br><br>Removing a profile takes the desktop, saved passwords and any local Outlook data with it. There is no undo.',
+String.raw`
+function Clear-OtherProfiles {
+  param(
+    [switch] $DryRun
+  )
+
+  $admin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
+           ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+  if (-not $admin) {
+    Write-Host 'This needs an elevated PowerShell. Close this window and open one as administrator.' -ForegroundColor Red
+    return
+  }
+
+  function ToSid($account) {
+    if (-not $account) { return $null }
+    try { return (New-Object System.Security.Principal.NTAccount($account)
+                 ).Translate([System.Security.Principal.SecurityIdentifier]).Value } catch { return $null }
+  }
+
+  Write-Host ''
+  Write-Host 'Working out who is on this machine...' -ForegroundColor Cyan
+
+  # 1. The person physically sat here. This is NOT the account you elevated as:
+  #    you are running with your own admin credentials, they are signed in at
+  #    the console. Getting these two confused is how you delete the profile of
+  #    the person watching you do it.
+  $consoleUser = (Get-CimInstance Win32_ComputerSystem).UserName
+  $consoleSid  = ToSid $consoleUser
+  if ($consoleUser) { Write-Host ("  at the console : {0}" -f $consoleUser) -ForegroundColor Green }
+  else              { Write-Host '  at the console : nobody signed in' -ForegroundColor Yellow }
+
+  # 2. You.
+  $meSid  = ([Security.Principal.WindowsIdentity]::GetCurrent()).User.Value
+  $meName = ([Security.Principal.WindowsIdentity]::GetCurrent()).Name
+  Write-Host ("  running as     : {0}" -f $meName) -ForegroundColor Green
+
+  # 3. Accounts a service starts as. Removing one of these profiles breaks the
+  #    service on next start, usually days later, and nobody connects the two.
+  # Services report their account as ".\svc_backup", "MACHINE\svc_backup" or
+  # "DOMAIN\svc_backup" depending on how they were configured, while the profile
+  # resolves to one specific form. Keep both the full string and the bare name
+  # so the comparison cannot miss on a prefix.
+  $svcAccounts = @()
+  Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | ForEach-Object {
+    if ($_.StartName) {
+      $full = $_.StartName.ToLower()
+      $svcAccounts += $full
+      $svcAccounts += ($full -split '\\')[-1]
+    }
+  }
+  $svcAccounts = @($svcAccounts | Where-Object { $_ } | Sort-Object -Unique)
+
+  # 4. Anyone with a process running right now, which catches disconnected
+  #    sessions and scheduled tasks that Loaded on its own can miss.
+  $busy = @()
+  Get-Process -IncludeUserName -ErrorAction SilentlyContinue | ForEach-Object {
+    if ($_.UserName) {
+      $u = $_.UserName.ToLower()
+      $busy += $u
+      $busy += ($u -split '\\')[-1]
+    }
+  }
+  $busy = @($busy | Where-Object { $_ } | Sort-Object -Unique)
+
+  $builtin = @('administrator','public','default','defaultuser0','defaultapppool',
+               'systemprofile','localservice','networkservice')
+
+  $offer = @(); $keep = @()
+
+  foreach ($prof in (Get-CimInstance Win32_UserProfile -Filter 'Special = False')) {
+    $path = $prof.LocalPath
+    if (-not $path) { continue }
+    $name = Split-Path $path -Leaf
+
+    $acct = $null
+    try { $acct = (New-Object System.Security.Principal.SecurityIdentifier($prof.SID)
+                  ).Translate([System.Security.Principal.NTAccount]).Value } catch { }
+    $acctLow  = ''
+    $acctLeaf = ''
+    if ($acct) { $acctLow = $acct.ToLower(); $acctLeaf = ($acctLow -split '\\')[-1] }
+
+    $why = $null
+    if ($prof.SID -eq $consoleSid)              { $why = 'signed in at this machine' }
+    elseif ($prof.SID -eq $meSid)               { $why = 'this is you' }
+    elseif ($prof.Loaded)                       { $why = 'loaded - a session still holds files open' }
+    elseif ($builtin -contains $name.ToLower()) { $why = 'built-in or system profile' }
+    elseif ($acctLow -and (($svcAccounts -contains $acctLow) -or ($svcAccounts -contains $acctLeaf))) {
+      $why = 'a Windows service starts as this account' }
+    elseif ($acctLow -and (($busy -contains $acctLow) -or ($busy -contains $acctLeaf))) {
+      $why = 'has a process running right now' }
+    elseif (-not (Test-Path $path))             { $why = 'folder no longer on disk' }
+
+    if ($why) {
+      $keep += [PSCustomObject]@{ Profile = $name; Account = $(if ($acct) { $acct } else { '-' }); Protected = $why }
+      continue
+    }
+
+    # Only measure the ones we are going to offer - it is the slow part.
+    $bytes = (Get-ChildItem $path -Recurse -File -Force -ErrorAction SilentlyContinue |
+              Measure-Object Length -Sum).Sum
+    if (-not $bytes) { $bytes = 0 }
+
+    # Windows updates LastUseTime inconsistently, so take NTUSER.DAT as a second
+    # opinion and trust whichever is later. The error should fall towards
+    # "somebody still uses this".
+    $lastUse = $prof.LastUseTime
+    $lastNt  = $null
+    $nt = Join-Path $path 'NTUSER.DAT'
+    if (Test-Path $nt) { $lastNt = (Get-Item $nt -Force).LastWriteTime }
+    $last = $lastUse
+    if (-not $last -or ($lastNt -and $lastNt -gt $last)) { $last = $lastNt }
+    if (-not $last) { $last = (Get-Item $path -Force).LastWriteTime }
+
+    $offer += [PSCustomObject]@{
+      Profile = $name
+      Account = $(if ($acct) { $acct } else { 'account no longer exists' })
+      MB      = [int]($bytes / 1MB)
+      LastUsed = $last.ToString('yyyy-MM-dd')
+      Days    = [int]((Get-Date) - $last).TotalDays
+      Cim     = $prof
+    }
+  }
+
+  Write-Host ''
+  Write-Host '--- PROTECTED, will not be offered ---' -ForegroundColor Green
+  if ($keep.Count -gt 0) { $keep | Format-Table Profile, Account, Protected -AutoSize }
+  else { Write-Host '  (none)' }
+
+  $offer = @($offer | Sort-Object MB -Descending)
+  if ($offer.Count -eq 0) {
+    Write-Host '--- nothing else on this machine to remove ---' -ForegroundColor Green
+    Write-Host 'If the disk is still full the space is elsewhere - run the reclaim script.'
+    return
+  }
+
+  $total = ($offer | Measure-Object MB -Sum).Sum
+  Write-Host ('--- CAN BE REMOVED: {0} profile(s), {1} MB ---' -f $offer.Count, $total) -ForegroundColor Yellow
+  $offer | Format-Table Profile, Account, MB, LastUsed, Days -AutoSize
+
+  if ($DryRun) {
+    Write-Host 'Dry run. Nothing was removed and nothing was asked.' -ForegroundColor Cyan
+    Write-Host 'Run it again without -DryRun to work through them.'
+    return
+  }
+
+  $freeBefore = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'").FreeSpace
+  Write-Host ('Free on C: {0} GB' -f [math]::Round($freeBefore / 1GB, 1)) -ForegroundColor Cyan
+  Write-Host 'Y = delete   N = keep   A = all the rest   Q = stop   (Enter means No)' -ForegroundColor Yellow
+
+  $all = $false; $freed = 0; $done = 0; $i = 0
+
+  :profiles foreach ($x in $offer) {
+    $i = $i + 1
+    $ans = 'Y'
+    if (-not $all) {
+      Write-Host ''
+      Write-Host ('[{0} of {1}]  {2}    {3}' -f $i, $offer.Count, $x.Profile, $x.Account) -ForegroundColor White
+      Write-Host ('   {0} MB, last used {1} ({2} days ago)' -f $x.MB, $x.LastUsed, $x.Days)
+      $ans = (Read-Host '   Delete? [Y]es / [N]o / [A]ll / [Q]uit').Trim().ToUpper()
+    }
+
+    if ($ans -eq 'Q') { Write-Host '   stopped.' -ForegroundColor Yellow; break profiles }
+
+    if ($ans -eq 'A') {
+      $rest = @($offer | Select-Object -Skip ($i - 1))
+      $restMB = ($rest | Measure-Object MB -Sum).Sum
+      Write-Host ''
+      Write-Host ('   That is {0} profile(s), {1} MB, deleted without asking again.' -f $rest.Count, $restMB) -ForegroundColor Red
+      $sure = (Read-Host '   Type YES to confirm').Trim()
+      if ($sure -ne 'YES') { Write-Host '   not confirmed, back to one at a time.' -ForegroundColor Yellow; $ans = 'N' }
+      else { $all = $true; $ans = 'Y' }
+    }
+
+    if ($ans -ne 'Y') { Write-Host '   kept' -ForegroundColor DarkGray; continue }
+
+    try {
+      Remove-CimInstance -InputObject $x.Cim -ErrorAction Stop
+      $freed = $freed + $x.MB
+      $done  = $done + 1
+      Write-Host ('   removed {0} ({1} MB)' -f $x.Profile, $x.MB) -ForegroundColor Green
+    } catch {
+      Write-Host ('   FAILED: {0}' -f $_.Exception.Message) -ForegroundColor Red
+      Write-Host '   Usually a file still locked. Sign the machine out and try again.'
+    }
+  }
+
+  Start-Sleep -Seconds 2
+  $freeAfter = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'").FreeSpace
+  Write-Host ''
+  Write-Host ('Removed {0} profile(s), about {1} MB.' -f $done, $freed) -ForegroundColor Green
+  Write-Host ('Free on C: was {0} GB, now {1} GB.' -f
+    [math]::Round($freeBefore / 1GB, 1), [math]::Round($freeAfter / 1GB, 1)) -ForegroundColor Green
+  Write-Host ''
+  Write-Host 'Put the names on the ticket. If somebody asks for a file back next week the'
+  Write-Host 'honest answer needs to be on the record rather than in your memory.'
+}
+
+Clear-OtherProfiles -DryRun`);
+
 
 S('big-folders','perf','Biggest folders in a user profile (uses User)',[],
 'Finds what is eating a user\'s space. Usually Downloads, Desktop, or a Google Drive folder somebody set to Available offline.',
@@ -2325,6 +2678,73 @@ fi
 echo
 echo "Restart the process that holds it and the space comes back immediately."
 echo "Nothing needs deleting, and rebooting is not the fix, it is the workaround."`);
+
+S('lx-reclaim','linux','Reclaim disk space',['linux','admin'],
+'Adds up everything safe to remove on either distribution family and prints the command for each, rather than running it. Package caches, orphaned packages, old kernels, the journal, old snap revisions, and Docker if it is here. Snap revisions in particular catch people out: Ubuntu keeps the last two of every snap and it quietly adds up to gigabytes.',
+String.raw`
+echo "=== free now ==="
+df -h / | tail -1
+echo
+
+size() { [ -e "$1" ] && du -sh "$1" 2>/dev/null | cut -f1 || echo "-"; }
+
+echo "=== package cache ==="
+if command -v apt-get >/dev/null 2>&1; then
+  echo "  $(size /var/cache/apt/archives)  /var/cache/apt/archives"
+  echo "    sudo apt-get clean"
+  echo
+  echo "  orphaned packages no longer needed:"
+  apt-get -s autoremove 2>/dev/null | grep -E "^[0-9]+ upgraded" || true
+  echo "    sudo apt-get autoremove --purge"
+elif command -v dnf >/dev/null 2>&1; then
+  echo "  $(size /var/cache/dnf)  /var/cache/dnf"
+  echo "    sudo dnf clean all"
+  echo "    sudo dnf autoremove"
+fi
+echo
+
+echo "=== old kernels ==="
+echo "  running: $(uname -r)"
+if command -v dpkg >/dev/null 2>&1; then
+  dpkg -l 'linux-image-*' 2>/dev/null | awk '/^ii/ { print "  installed: " $2 }'
+  echo "    sudo apt-get autoremove --purge   (this is what removes them)"
+elif command -v rpm >/dev/null 2>&1; then
+  rpm -q kernel | sed 's/^/  installed: /'
+  echo "    sudo dnf remove --oldinstallonly --setopt installonly_limit=2"
+fi
+echo "  Never remove the kernel you are currently booted from."
+echo
+
+echo "=== systemd journal ==="
+journalctl --disk-usage 2>/dev/null
+echo "    sudo journalctl --vacuum-time=7d"
+echo
+
+if command -v snap >/dev/null 2>&1; then
+  echo "=== snap ==="
+  echo "  $(size /var/lib/snapd/snaps)  /var/lib/snapd/snaps"
+  echo "  disabled revisions still on disk:"
+  snap list --all 2>/dev/null | awk '/disabled/ { print "    " $1 " " $3 }'
+  echo "    sudo snap set system refresh.retain=2"
+  echo "    then remove each disabled revision:  sudo snap remove <name> --revision=<rev>"
+  echo
+fi
+
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  echo "=== docker ==="
+  docker system df 2>/dev/null
+  echo "    docker system prune -a     <- removes every image not used by a running container"
+  echo
+fi
+
+echo "=== caches and temp ==="
+echo "  $(size "$HOME/.cache")  $HOME/.cache"
+echo "  $(size /tmp)  /tmp"
+echo "  $(size /var/tmp)  /var/tmp"
+echo "    rm -rf ~/.cache/*     (safe, applications rebuild it)"
+echo
+echo "Nothing above has been deleted. Read each one, decide, then run it."`);
+
 
 S('lx-journal-size','linux','The journal has eaten the disk',['linux','admin','changes'],
 'The systemd journal grows until it hits a limit that is often larger than anyone intended. Shows what it is using, then trims it. <b>Read the second command before running it</b> - it permanently discards log history, so make sure nobody needs it for an investigation first.',
@@ -3103,13 +3523,16 @@ const GUIDES = [
 {id:'g-disk', title:'Disk full', sub:'Low disk space warnings, updates failing for space',
  steps:[
   'See how bad it is. [[disk-space]]',
-  'On a shared desktop the space is almost certainly not theirs: every person who logs in leaves a profile behind. That needs admin rights to clear, so it is ours, not something they have done wrong.',
-  'Clear temp files. [[clear-temp]]',
-  'Run Disk Cleanup: type cleanmgr, pick C:, Clean up system files, tick Windows Update Cleanup.',
-  'Find what is big. The Sysinternals one is much faster than walking the tree in PowerShell. [[sys-du]] [[big-folders]] [[big-files]]',
+  'Measure what could be freed before deleting anything. It prints a size against each candidate and the command for it, so you can tell the user what you are about to reclaim rather than guessing. [[disk-reclaim]]',
+  'Clear temp files - the safest win and usually a quick one. [[clear-temp]]',
+  'Then the four that are safe to clear without asking anyone: the Windows Update download cache, Delivery Optimization, the error report queue and the Recycle Bin. <b>Mention the Recycle Bin first</b> - plenty of people use it as a filing system. [[disk-clean-run]]',
+  'On a shared or hot-desked machine the space is almost never theirs: every person who has ever logged in left a profile behind. This lists them by size with last-used dates, which usually makes the problem obvious. It needs admin rights, so it is ours to fix, not something they have done wrong. [[disk-profiles]]',
+  'To actually clear them, use the interactive one. It works out who is sat at the machine, protects them along with anything running or anything a service depends on, lists what it protected and why, then asks you about everyone else one at a time. <b>Start it with -DryRun</b> to see both tables without being asked anything. <b>Agree it with the person in front of you</b> - a profile takes their desktop, saved passwords and any local Outlook data with it, and there is no undo. [[disk-profiles-clean]]',
+  'Find what is actually big. The Sysinternals one is much faster than walking the tree in PowerShell. [[sys-du]] [[big-folders]] [[big-files]]',
   'Check whether a file-sync client is holding a large offline cache, which is a common reason a laptop fills up for no obvious reason. [[gdrive-space]] [[ms-kfm]]',
-  'Empty the Recycle Bin and look through Downloads. Ask before deleting anything personal.',
-  'On a Mac. [[mac-disk]]'
+  'Still tight? The component store is the last big one, and it is often gigabytes on an older build: <span class="mono">Dism.exe /Online /Cleanup-Image /StartComponentCleanup</span>. It can take twenty minutes and should not be interrupted, so not during a call.',
+  'Ask before touching Downloads or anything personal. Freeing space by deleting someone&rsquo;s files is how you turn one ticket into two.',
+  'On a Mac, start with the disk report, then the reclaim script - which covers purgeable space, the thing that makes a Mac behave as though it is full while Finder insists it is not. [[mac-disk]] [[mac-reclaim]]'
  ]},
 {id:'g-bsod', title:'Blue screens / random restarts', sub:'Crashes, unexpected shutdowns',
  steps:[
@@ -3185,6 +3608,8 @@ const GUIDES = [
   'If df says full and du says it is not, a process is still holding a deleted file open. Restart that process and the space comes straight back - do not reboot, and do not go looking for files to delete. [[lx-deleted]]',
   'Check the journal. It grows to a limit that is usually larger than anyone intended. [[lx-journal-size]]',
   'Check whether the filesystem you expected is even mounted. A missing mount means writes went to the root disk instead. [[lx-mounts]]',
+  'Now reclaim what is safe to reclaim. Package caches, orphaned packages, old kernels, the journal, old snap revisions and Docker if it is there - measured first, with the command printed against each one. Snap revisions catch people out especially: Ubuntu keeps the last two of every snap and it quietly runs to gigabytes. [[lx-reclaim]]',
+  'Never remove the kernel you are currently booted from, however tempting the size looks.',
   'Only once you know what filled it: agree what to remove with whoever owns the machine. Deleting logs during an incident destroys the evidence for the investigation afterwards.'
  ]},
 {id:'g-linux-service', title:'A service will not start', sub:'systemctl says failed, or it starts and dies immediately',
@@ -4858,8 +5283,13 @@ function scriptCard(s){
 }
 
 function guideCard(g, open){
+  /* A step is authored in this file and may contain simple markup, exactly as a
+     script description may. Escaping one and not the other meant a <b> in a step
+     rendered as the literal characters. One rule for both: the content of this
+     file is trusted, anything interpolated into it is not - which is why the
+     chip title below is still escaped. */
   const steps = g.steps.map(st => {
-    const html = esc(st).replace(/\[\[([\w-]+)\]\]/g, (m, id) => {
+    const html = st.replace(/\[\[([\w-]+)\]\]/g, (m, id) => {
       const s = activeScripts().find(x => x.id === id);
       return s ? '<span class="chip" data-goto="' + id + '" title="Show this script">' +
                  esc(s.title.replace(/\s*\(uses \w+\)/, '')) + '</span>' : '';
