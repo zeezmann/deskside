@@ -1,6 +1,6 @@
 {
   "name": "deskside",
-  "version": "1.8.2",
+  "version": "1.9.0",
   "description": "A single-file IT support toolkit. Scripts, fix-it guides and offline utilities for Windows, macOS and Linux.",
   "type": "module",
   "private": true,

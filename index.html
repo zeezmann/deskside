@@ -309,7 +309,6 @@ main{padding:26px 26px 90px;min-width:0;max-width:1080px}
 .b-net{background:var(--green-soft);color:var(--green);border-color:var(--green-line)}
 .b-mac{background:var(--teal-soft);color:var(--teal);border-color:var(--teal-line)}
 .b-linux{background:var(--plum-soft);color:var(--plum);border-color:var(--plum-line)}
-.b-sys{background:var(--surface2);color:var(--ink2);border-color:var(--accent)}
 .b-mod{background:var(--surface2);color:var(--ink2);border-color:var(--teal)}
 .legend{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:12px}
 
@@ -666,7 +665,6 @@ textarea#notes:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accen
         <span class="fill" data-fill="APP"><label for="v_APP">App</label><input id="v_APP" data-var="APP" spellcheck="false"></span>
         <span class="fill" data-fill="SERVICE"><label for="v_SERVICE">Service</label><input id="v_SERVICE" data-var="SERVICE" spellcheck="false"></span>
         <span class="fill w" data-fill="FILE"><label for="v_FILE">File</label><input id="v_FILE" data-var="FILE" spellcheck="false"></span>
-        <span class="fill w" data-fill="SYS"><label for="v_SYS">Sysinternals</label><input id="v_SYS" data-var="SYS" spellcheck="false"></span>
       </div>
     </div>
     <main id="main" tabindex="-1"></main>
@@ -702,10 +700,7 @@ textarea#notes:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accen
 
 const DEFAULTS = {
   COMPUTER:'PC-NAME', IP:'203.0.113.10', USER:'jsmith', PROCESS:'wermgr',
-  APP:'Chrome', FILE:'C:\\Users\\Public\\Downloads\\file.exe', SERVICE:'nginx',
-  // Where the Sysinternals Suite lives. Put it on the share next to this file
-  // and change this once; every Sysinternals script below picks it up.
-  SYS:'C:\\Tools\\Sysinternals'
+  APP:'Chrome', FILE:'C:\\Users\\Public\\Downloads\\file.exe', SERVICE:'nginx'
 };
 
 const CATS = [
@@ -717,7 +712,6 @@ const CATS = [
   {id:'cloud',    name:'Chat, calls & sync'},
   {id:'ms365',    name:'Microsoft 365', stack:'microsoft'},
   {id:'security', name:'Security & triage'},
-  {id:'sysint',   name:'Sysinternals'},
   {id:'perf',     name:'Performance & disk'},
   {id:'accounts', name:'Accounts & AD'},
   {id:'remote',   name:'Remote admin'},
@@ -760,14 +754,6 @@ $cpu  = Get-CimInstance Win32_Processor | Select-Object -First 1
   LastBoot     = $os.LastBootUpTime
   UptimeDays   = [math]::Round(((Get-Date) - $os.LastBootUpTime).TotalDays, 1)
 } | Format-List`);
-
-S('uptime','info','How long since last reboot',[],
-'Lots of "slow PC" and weird-glitch tickets are machines that have not been restarted in weeks. Note: Fast Startup means shutting down does not reset this, only Restart does.',
-String.raw`
-$boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
-$up   = (Get-Date) - $boot
-"Last boot: $boot"
-"Uptime:    {0} days {1} hours {2} mins" -f $up.Days, $up.Hours, $up.Minutes`);
 
 S('os-version','info','Windows version and build',[],
 'Shows the edition, feature version (e.g. 23H2 / 24H2) and exact build. ProductName can still say "Windows 10" on Windows 11 machines; a build of 22000 or higher means Windows 11.',
@@ -812,36 +798,6 @@ Get-WinEvent -FilterHashtable @{ LogName='System'; Id=1074,6008,41 } -MaxEvents 
   Select-Object TimeCreated, Id, @{n='Message';e={ ($_.Message -split "\r?\n")[0] }} |
   Format-Table -AutoSize -Wrap`);
 
-S('collect-report','info','Collect everything into one file for the ticket',['admin'],
-'What you actually want at the end of a job: one text file to attach to the ticket instead of pasting output a piece at a time. Runs the snapshot, disk, network, top processes and recent errors, writes them to the Desktop and opens it. Takes about a minute.',
-String.raw`
-$out = "$env:USERPROFILE\Desktop\$env:COMPUTERNAME-report-$(Get-Date -Format yyyyMMdd-HHmm).txt"
-Start-Transcript -Path $out -Force | Out-Null
-"===== $(Get-Date) ====="
-"--- System ---"
-$os = Get-CimInstance Win32_OperatingSystem
-$cs = Get-CimInstance Win32_ComputerSystem
-[PSCustomObject]@{
-  Computer = $env:COMPUTERNAME; User = $cs.UserName; Model = $cs.Model
-  Serial = (Get-CimInstance Win32_BIOS).SerialNumber
-  OS = $os.Caption; Build = $os.BuildNumber
-  RAM_GB = [math]::Round($cs.TotalPhysicalMemory/1GB,1)
-  UptimeDays = [math]::Round(((Get-Date) - $os.LastBootUpTime).TotalDays,1)
-} | Format-List
-"--- Disks ---"
-Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" |
-  Select-Object DeviceID, @{n='FreeGB';e={[math]::Round($_.FreeSpace/1GB,1)}}, @{n='Free%';e={[math]::Round($_.FreeSpace/$_.Size*100)}} | Format-Table -AutoSize
-"--- Network ---"
-Get-NetIPConfiguration | Where-Object { $_.NetAdapter.Status -eq 'Up' } | Format-List InterfaceAlias, IPv4Address, IPv4DefaultGateway, DNSServer
-"--- Top processes ---"
-Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 10 Name, Id, @{n='MemoryMB';e={[math]::Round($_.WorkingSet64/1MB)}} | Format-Table -AutoSize
-"--- Errors, last 24h ---"
-Get-WinEvent -FilterHashtable @{ LogName='System','Application'; Level=1,2; StartTime=(Get-Date).AddHours(-24) } -MaxEvents 40 -ErrorAction SilentlyContinue |
-  Select-Object TimeCreated, LogName, ProviderName, Id, @{n='Message';e={ ($_.Message -split "\r?\n")[0] }} | Format-Table -AutoSize -Wrap
-Stop-Transcript | Out-Null
-Write-Host "Saved to $out" -ForegroundColor Green
-Start-Process notepad.exe $out`);
-
 /* ---------------- SOFTWARE INSTALLS & UPDATES ----------------
    Usually the biggest category of all. Most of it comes down to standard
    users having no rights to install or update anything, so this is the
@@ -868,21 +824,6 @@ S('winget-upgrade-one','software','Update one app (uses App)',['net','changes'],
 'Updates the single package whose Id is in the <b>App</b> box. Use winget-search first to get the exact Id. Close the app before running it.',
 String.raw`
 winget upgrade --id "{{APP}}" -e --accept-package-agreements --accept-source-agreements`);
-
-S('winget-ours','software','Update the usual set in one pass',['net','changes','risk'],
-'The handful that generate most update tickets, done in one go. <b>Edit the list to match whatever you actually deploy</b> - these are only a starting point. Each app closes while it updates, so tell the user first and never run it during a call. Anything not installed is skipped rather than erroring.',
-String.raw`
-# Change these to your own. winget search <name> gives you the id.
-$ids = 'SlackTechnologies.Slack',
-       'Google.Chrome',
-       'Mozilla.Firefox',
-       'Microsoft.VisualStudioCode',
-       'Zoom.Zoom'
-foreach ($id in $ids) {
-  Write-Host "--- $id ---" -ForegroundColor Cyan
-  winget upgrade --id $id -e --accept-package-agreements --accept-source-agreements
-}
-Write-Host 'Done. Ask the user to reopen the apps and confirm.' -ForegroundColor Yellow`);
 
 S('winget-upgrade-all','software','Update everything winget knows about',['net','changes','risk'],
 'The big one. Updates every package with an update available. Apps close as they go, so agree a time with the user first and never run it mid-call. Skips anything pinned or unknown to winget.',
@@ -1056,25 +997,6 @@ String.raw`
 killall Finder
 # If the Dock is the problem instead:
 # killall Dock`);
-
-S('mac-report','mac','Collect everything into one file for the ticket',['mac'],
-'Runs the main checks and writes them to a single text file on the Desktop, then opens it. Attach that to the ticket instead of pasting output a bit at a time.',
-String.raw`
-OUT=~/Desktop/mac-report-$(date +%Y%m%d-%H%M).txt
-{
-  echo "===== $(date) ====="
-  echo; echo "--- Hardware ---"; system_profiler SPHardwareDataType | grep -E "Model|Chip|Memory|Serial"
-  echo; echo "--- macOS ---";    sw_vers
-  echo; echo "--- Uptime ---";   uptime
-  echo; echo "--- Disk ---";     df -h /
-  echo; echo "--- Network ---";  ifconfig | grep "inet " | grep -v 127.0.0.1
-  echo; echo "--- DNS ---";      scutil --dns | grep nameserver | sort -u
-  echo; echo "--- Top procs ---"; ps -Ao pcpu,pmem,comm -r | head -12
-  echo; echo "--- Battery ---";  system_profiler SPPowerDataType | grep -E "Cycle Count|Condition"
-  echo; echo "--- FileVault ---"; fdesetup status
-} > "$OUT" 2>&1
-echo "Saved to $OUT"
-open "$OUT"`);
 
 /* ---------------- NETWORK ---------------- */
 S('net-overview','network','Network adapters, IPs, gateway and DNS',[],
@@ -1436,134 +1358,6 @@ manage-bde -status C:
 # Emergency only, and never paste the output anywhere:
 # manage-bde -protectors -get C:`);
 
-/* ---------------- SYSINTERNALS ----------------
-   Microsoft's own toolset, free, signed by Microsoft, and it does several
-   things PowerShell simply cannot: what has this file locked, the full
-   persistence picture, effective permissions on a path.
-
-   THE PREREQUISITE. None of this works unless the binaries are somewhere the
-   machine can reach. Download the suite once, drop it on the share beside this
-   file, and set the Sysinternals box at the top to that path. Do not have each
-   tech download their own copy, and do not run it from live.sysinternals.com:
-   pulling executables off a remote WebDAV share is the exact pattern staff
-   are trained not to fall for, and the EDR will usually stop it anyway.
-
-   Every command carries -accepteula, because without it the first run pops a
-   licence dialog and a remote or non-interactive session just hangs.
-   ---------------------------------------------------------------------- */
-S('sys-check','sysint','Are the tools actually there?',['sys'],
-'Run this first. Checks the path in the <b>Sysinternals</b> box at the top is reachable and lists what is in it with versions, so you know what you are working with before you need it at 4pm on a Friday.',
-String.raw`
-$sys = '{{SYS}}'
-if (-not (Test-Path $sys)) {
-  Write-Host "Cannot reach $sys" -ForegroundColor Red
-  Write-Host 'Check the path in the Sysinternals box, and that you are on the network or VPN.'
-} else {
-  Get-ChildItem $sys -Filter *.exe |
-    Select-Object Name, @{n='Version';e={ $_.VersionInfo.ProductVersion }},
-                  @{n='Signed';e={ (Get-AuthenticodeSignature $_.FullName).Status }} |
-    Sort-Object Name | Format-Table -AutoSize
-}`);
-
-S('sys-path','sysint','Make the tools available for this session',['sys'],
-'Adds the Sysinternals folder to the path for this PowerShell window only, so you can type handle64 or sigcheck64 directly instead of the full path. Closes when the window closes, which is what you want.',
-String.raw`
-$env:Path += ';{{SYS}}'
-Write-Host 'Sysinternals added to this session. Try: sigcheck64 -accepteula -nobanner -h C:\Windows\explorer.exe'`);
-
-S('sys-handle-file','sysint','What is holding this file open? (uses File)',['sys','admin'],
-'<b>The one that earns its keep.</b> "The file is in use by another program" with no clue which program, a file that will not rename or delete, a folder Explorer refuses to remove. PowerShell has no honest answer to this. Handle does. Put the path or just the file name in the <b>File</b> box.',
-String.raw`
-& '{{SYS}}\handle64.exe' -accepteula -nobanner -u '{{FILE}}'`);
-
-S('sys-handle-proc','sysint','What files does this process have open? (uses Process)',['sys','admin'],
-'The other direction: everything the process in the <b>Process</b> box currently has open. Good for working out why an app is pinning a network share or a log file.',
-String.raw`
-& '{{SYS}}\handle64.exe' -accepteula -nobanner -p '{{PROCESS}}'`);
-
-S('sys-autorunsc','sysint','Full persistence report, Microsoft entries hidden',['sys','admin'],
-'Autoruns knows about far more startup locations than the registry Run keys and scheduled tasks we check elsewhere: services, drivers, codecs, browser helpers, WMI subscriptions, logon scripts. This writes the lot to a CSV on the Desktop with signatures verified and hashes included, and hides Microsoft-signed entries so you are looking at a readable list rather than two thousand rows.',
-String.raw`
-$out = "$env:USERPROFILE\Desktop\autoruns-$env:COMPUTERNAME-$(Get-Date -Format yyyyMMdd-HHmm).csv"
-& '{{SYS}}\autorunsc64.exe' -accepteula -nobanner -a * -s -h -m -c > $out
-Write-Host "Saved to $out" -ForegroundColor Green
-Import-Csv $out | Select-Object Entry, 'Image Path', Publisher, Category | Format-Table -AutoSize -Wrap`);
-
-S('sys-sigcheck','sysint','Verify a file properly (uses File)',['sys'],
-'Signature, publisher, version, and every hash in one go. More thorough than the built-in signature check, and the hashes are what you paste into VirusTotal or hand to whoever is running the investigation.',
-String.raw`
-& '{{SYS}}\sigcheck64.exe' -accepteula -nobanner -a -h '{{FILE}}'
-# Hash-only VirusTotal lookup. Sends the hash, never the file, but it is
-# still a third party, so keep it for genuine investigations:
-# & '{{SYS}}\sigcheck64.exe' -accepteula -nobanner -vt -v '{{FILE}}'`);
-
-S('sys-sigcheck-scan','sysint','Find unsigned executables in a folder',['sys','admin'],
-'Scans a folder tree and reports only the executables that are not validly signed. Pointed at a user profile or ProgramData this is one of the fastest ways to spot something that does not belong. Edit the path on the last line.',
-String.raw`
-& '{{SYS}}\sigcheck64.exe' -accepteula -nobanner -e -u -s "$env:USERPROFILE\AppData"`);
-
-S('sys-accesschk','sysint','Who can actually get at this? (uses User)',['sys','admin'],
-'Effective permissions, which is a different question from what the ACL says. The answer to "they are in the right group but still get access denied". Edit the path on the second line.',
-String.raw`
-$env:Path += ';{{SYS}}'
-accesschk64.exe -accepteula -nobanner '{{USER}}' -d 'C:\Shared\Folder'
-# Everything that user can write to under a path:
-# accesschk64.exe -accepteula -nobanner -w -s '{{USER}}' 'C:\Program Files'`);
-
-S('sys-listdlls','sysint','Unsigned DLLs loaded into running processes',['sys','admin'],
-'DLL side-loading is a favourite trick: a legitimate signed program loading a malicious library from its own folder. This lists the unsigned ones actually loaded right now.',
-String.raw`
-& '{{SYS}}\listdlls64.exe' -accepteula -nobanner -u`);
-
-S('sys-du','sysint','Disk usage by folder, fast (uses User)',['sys'],
-'Much quicker than walking the tree in PowerShell, which is why the built-in version of this takes minutes. Two levels deep under the user profile.',
-String.raw`
-& '{{SYS}}\du64.exe' -accepteula -nobanner -l 2 -q "C:\Users\{{USER}}"`);
-
-S('sys-procexp','sysint','Process Explorer, set up the way you want it',['sys','admin'],
-'Task Manager with the lid off. Launch it elevated, then do these three things once and it remembers them: <b>Options &gt; Verify Image Signatures</b>, <b>Options &gt; VirusTotal.com &gt; Check VirusTotal.com</b> (hashes only, not files), and <b>View &gt; Select Columns &gt; Verified Signer</b>. After that every process shows you who signed it and how many engines flag its hash, at a glance.<br><br>Ctrl+F finds which process has a file or DLL open. The tree view shows parents, which is how you spot a browser or a document spawning a shell.',
-String.raw`
-Start-Process '{{SYS}}\procexp64.exe' -Verb RunAs`);
-
-S('sys-autoruns-gui','sysint','Autoruns, the window version',['sys','admin'],
-'When you want to look rather than export. Tick <b>Options &gt; Hide Microsoft Entries</b> and <b>Verify Code Signatures</b> first, otherwise it is unreadable. Right-click anything to jump to its registry key or folder. Unticking an entry disables it without deleting it, which is the safe way to test.',
-String.raw`
-Start-Process '{{SYS}}\autoruns64.exe' -Verb RunAs`);
-
-S('sys-tcpview','sysint','TCPView: live connections with the process behind them',['sys','admin'],
-'What the live connections script does, but as a window and sortable, and it colours new connections green and closing ones red. Easier than a static table when you are watching for something that phones home every few minutes.',
-String.raw`
-Start-Process '{{SYS}}\tcpview64.exe' -Verb RunAs`);
-
-S('sys-procmon','sysint','Process Monitor, without drowning in it',['sys','admin','risk'],
-'For "the app fails and the error tells us nothing". It records every file, registry and process event, which is millions of lines in seconds, so the filter is the whole skill.<br><br>Open it, press <b>Ctrl+E</b> to stop capture, <b>Ctrl+X</b> to clear, then set a filter (<b>Ctrl+L</b>): <i>Process Name is</i> the app, and <i>Result is NAME NOT FOUND</i> or <i>ACCESS DENIED</i>. Start capture, reproduce the fault, stop immediately. Those two results are where broken apps usually confess.<br><br>It hits the disk hard while capturing, so do not leave it running and do not start it on a machine that is already struggling.',
-String.raw`
-Start-Process '{{SYS}}\procmon64.exe' -Verb RunAs`);
-
-S('sys-psinfo','sysint','Remote system summary (uses Computer)',['sys','remote','admin'],
-'Everything about a remote machine in one shot: build, uptime, install date, disks, hotfixes. Works where PowerShell remoting is not set up, because PsTools use the admin share rather than WinRM.',
-String.raw`
-& '{{SYS}}\psinfo64.exe' -accepteula -nobanner \\{{COMPUTER}} -h -d`);
-
-S('sys-psloggedon','sysint','Who is logged on, locally and over the network (uses Computer)',['sys','remote'],
-'Shows both people sitting at the machine and sessions connected to its shares. More complete than quser, and worth running before you restart anything.',
-String.raw`
-& '{{SYS}}\psloggedon64.exe' -accepteula -nobanner \\{{COMPUTER}}`);
-
-S('sys-pslist','sysint','Processes on a remote machine (uses Computer)',['sys','remote','admin'],
-'Process list without disturbing the user. The commented line kills one by name or PID, so read it before you run it.',
-String.raw`
-& '{{SYS}}\pslist64.exe' -accepteula -nobanner \\{{COMPUTER}}
-# Kill one. Check who is logged on first:
-# & '{{SYS}}\pskill64.exe' -accepteula -nobanner \\{{COMPUTER}} '{{PROCESS}}'`);
-
-S('sys-psexec-system','sysint','Run something as SYSTEM (uses Computer)',['sys','admin','risk','remote'],
-'<b>Read this before you use it.</b> PsExec is a legitimate Microsoft admin tool and it is also in essentially every ransomware playbook for moving between machines. Your EDR is very likely to alert on it, and it should. Agree with whoever owns the EDR that support staff use it, and expect to explain any run that was not yours.<br><br>Used properly it is the answer to a small number of jobs nothing else does: clearing another user profile that is in use, editing a registry hive that only SYSTEM can touch, running a tool that refuses to work as an ordinary admin. First line opens a SYSTEM prompt on this machine; the second does it on a remote one.',
-String.raw`
-& '{{SYS}}\psexec64.exe' -accepteula -s -i cmd.exe
-# On a remote machine instead:
-# & '{{SYS}}\psexec64.exe' -accepteula \\{{COMPUTER}} -s -i cmd.exe`);
-
 /* ---------------- PERFORMANCE & DISK ---------------- */
 S('top-cpu','perf','Top 10 processes by CPU right now',[],
 'A live sample of CPU use, adjusted for the number of cores so the figures are real percentages.',
@@ -1602,118 +1396,130 @@ foreach ($t in $targets) { Get-ChildItem $t -Force -ErrorAction SilentlyContinue
 $after   = ($targets | ForEach-Object { Get-ChildItem $_ -Recurse -File -Force -ErrorAction SilentlyContinue } | Measure-Object Length -Sum).Sum
 "Freed about {0} MB" -f [math]::Round(($before - $after) / 1MB)`);
 
-S('disk-reclaim','perf','Reclaim disk space: what can go, and how much',['admin'],
-'The big wins on a full Windows disk, measured before anything is deleted. Nothing here removes a thing - it adds up what each one would free and prints the command. Deciding what to delete on somebody else&rsquo;s machine is a decision, not a step, and you want the number before you make it.',
+S('locked-file','perf','What is holding this file open?',['admin'],
+'For "the file is in use by another program" when nothing obvious has it. Checks the three places the answer usually is: open over a share, an Office lock file that names the person, or a process on this machine. Put the path in the <b>File</b> box.<br><br>Windows has no built-in command that lists every process holding a handle to a file, so the last step points you at Resource Monitor, which does and is on every machine. If you have Sysinternals to hand, <span class="mono">handle64 -a -u "path"</span> is the faster route.',
 String.raw`
-function Size($p) {
-  if (-not (Test-Path $p)) { return 0 }
-  (Get-ChildItem $p -Recurse -File -Force -ErrorAction SilentlyContinue |
-    Measure-Object Length -Sum).Sum
+$f    = '{{FILE}}'
+$leaf = Split-Path $f -Leaf
+$dir  = Split-Path $f -Parent
+
+Write-Host '--- open over a share from this machine? ---' -ForegroundColor Cyan
+$smb = Get-SmbOpenFile -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "*$leaf*" }
+if ($smb) {
+  $smb | Select-Object ClientUserName, ClientComputerName, Path | Format-Table -AutoSize
+  Write-Host 'That is who has it. Ask them to close it, or force it with:' -ForegroundColor Yellow
+  Write-Host '  Close-SmbOpenFile -FileId <id> -Force   <- they lose unsaved changes'
+} else { Write-Host '  nothing, or this machine is not the file server' }
+
+Write-Host ''
+Write-Host '--- an Office lock file next to it? ---' -ForegroundColor Cyan
+$lock = $null
+if ($dir -and (Test-Path $dir)) {
+  $lock = Get-ChildItem $dir -Filter ('~$' + $leaf.Substring([math]::Min(2, $leaf.Length))) -Force -ErrorAction SilentlyContinue
 }
-function Show($name, $bytes, $cmd) {
-  $mb = [math]::Round($bytes / 1MB)
-  '{0,-34} {1,8} MB   {2}' -f $name, $mb, $cmd
-}
-
-$free = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'").FreeSpace
-Write-Host ("Free on C: now: {0} GB" -f [math]::Round($free/1GB,1)) -ForegroundColor Cyan
-Write-Host ''
-Write-Host 'CANDIDATE                            SIZE      TO RECLAIM IT' -ForegroundColor Cyan
-
-Show 'Your temp folder'        (Size $env:TEMP)                                'use the Clear temp folders script'
-Show 'Windows temp folder'     (Size "$env:SystemRoot\Temp")                   'use the Clear temp folders script'
-Show 'Windows Update downloads' (Size "$env:SystemRoot\SoftwareDistribution\Download") 'Stop-Service wuauserv; Remove-Item "$env:SystemRoot\SoftwareDistribution\Download\*" -Recurse -Force; Start-Service wuauserv'
-Show 'Delivery Optimization cache' (Size "$env:SystemRoot\SoftwareDistribution\DeliveryOptimization") 'Delete-DeliveryOptimizationCache -Force'
-Show 'Windows.old (after an upgrade)' (Size 'C:\Windows.old')                  'cleanmgr, or it removes itself after 10 days'
-Show 'Error report queue'      (Size "$env:ProgramData\Microsoft\Windows\WER") 'safe to clear once a crash is investigated'
-Show 'Downloads folder'        (Size "$env:USERPROFILE\Downloads")             'ASK FIRST - this is their stuff'
-
-$rb = 0
-try { $rb = (Get-ChildItem 'C:\$Recycle.Bin' -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum } catch { }
-Show 'Recycle Bin (all users)' $rb 'Clear-RecycleBin -Force'
-
-$hib = 0
-if (Test-Path 'C:\hiberfil.sys') { $hib = (Get-Item 'C:\hiberfil.sys' -Force).Length }
-Show 'Hibernation file' $hib 'powercfg /h off   <- this also disables Fast Startup'
-
-Write-Host ''
-Write-Host '--- component store (WinSxS) ---' -ForegroundColor Cyan
-Write-Host 'This is the one that is usually worth gigabytes on an older build.'
-Dism.exe /Online /Cleanup-Image /AnalyzeComponentStore | Select-String 'Size|Reclaimable|Recommended'
-Write-Host ''
-Write-Host 'If it says cleanup is recommended:  Dism.exe /Online /Cleanup-Image /StartComponentCleanup'
-Write-Host 'That can take twenty minutes and cannot be interrupted safely, so not mid-call.'`);
-
-S('disk-clean-run','perf','Actually clear the safe ones',['admin','changes','risk'],
-'Does what the reclaim script only measured, for the four things that are genuinely safe to remove: Windows Update downloads, Delivery Optimization cache, the error report queue and the Recycle Bin. <b>It empties the Recycle Bin for every user on the machine</b>, so ask before you run it - people do use it as a filing system. Prints what each step freed.',
-String.raw`
-function Size($p) {
-  if (-not (Test-Path $p)) { return 0 }
-  (Get-ChildItem $p -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum
-}
-$freeBefore = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'").FreeSpace
-
-Write-Host '--- Windows Update download cache ---' -ForegroundColor Cyan
-$p = "$env:SystemRoot\SoftwareDistribution\Download"
-Write-Host ("  was {0} MB" -f [math]::Round((Size $p)/1MB))
-Stop-Service wuauserv -Force -ErrorAction SilentlyContinue
-Remove-Item "$p\*" -Recurse -Force -ErrorAction SilentlyContinue
-Start-Service wuauserv -ErrorAction SilentlyContinue
-Write-Host ("  now {0} MB" -f [math]::Round((Size $p)/1MB))
-
-Write-Host '--- Delivery Optimization cache ---' -ForegroundColor Cyan
-try { Delete-DeliveryOptimizationCache -Force -ErrorAction Stop; Write-Host '  cleared' }
-catch { Write-Host '  cmdlet not available on this build, skipped' }
-
-Write-Host '--- error report queue ---' -ForegroundColor Cyan
-$wer = "$env:ProgramData\Microsoft\Windows\WER"
-Write-Host ("  was {0} MB" -f [math]::Round((Size $wer)/1MB))
-Remove-Item "$wer\ReportQueue\*","$wer\ReportArchive\*" -Recurse -Force -ErrorAction SilentlyContinue
-
-Write-Host '--- Recycle Bin, all users ---' -ForegroundColor Cyan
-Clear-RecycleBin -Force -ErrorAction SilentlyContinue
-Write-Host '  emptied'
-
-$freeAfter = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'").FreeSpace
-Write-Host ''
-Write-Host ("Free before: {0} GB" -f [math]::Round($freeBefore/1GB,2))
-Write-Host ("Free after : {0} GB" -f [math]::Round($freeAfter/1GB,2))
-Write-Host ("Reclaimed  : {0} MB" -f [math]::Round(($freeAfter-$freeBefore)/1MB)) -ForegroundColor Green
-Write-Host ''
-Write-Host 'Still tight? The component store is the next one, and it is the big one:'
-Write-Host '  Dism.exe /Online /Cleanup-Image /StartComponentCleanup'`);
-
-S('disk-profiles','perf','Old user profiles eating a shared machine',['admin'],
-'On a shared or hot-desked machine the space is almost never the current user&rsquo;s - it is everyone who has ever logged in. Lists every profile with its size and when it was last used, so you can see at a glance that eleven people have left 4 GB each behind. Read-only; the removal command is printed per profile.',
-String.raw`
-$me = (Get-CimInstance Win32_ComputerSystem).UserName
-Get-CimInstance Win32_UserProfile -Filter "Special = False" |
-  ForEach-Object {
-    $p = $_.LocalPath
-    $size = (Get-ChildItem $p -Recurse -File -Force -ErrorAction SilentlyContinue |
-              Measure-Object Length -Sum).Sum
-    $name = Split-Path $p -Leaf
-    $acct = ''
-    try { $acct = (New-Object System.Security.Principal.SecurityIdentifier($_.SID)).Translate([System.Security.Principal.NTAccount]).Value } catch { $acct = 'deleted account' }
-    [PSCustomObject]@{
-      Profile  = $name
-      Account  = $acct
-      SizeMB   = [math]::Round($size / 1MB)
-      LastUsed = if ($_.LastUseTime) { $_.LastUseTime.ToString('yyyy-MM-dd') } else { 'unknown' }
-      Loaded   = $_.Loaded
-      SID      = $_.SID
+if ($lock) {
+  $bytes = [System.IO.File]::ReadAllBytes($lock.FullName)
+  $who = ''
+  if ($bytes.Length -gt 2) {
+    $len = $bytes[0]
+    if ($len -gt 0 -and $len -lt 60 -and $bytes.Length -gt $len) {
+      $who = [System.Text.Encoding]::ASCII.GetString($bytes, 1, $len) -replace '[^\x20-\x7E]',''
+      if ($who.Trim().Length -lt 2) {
+        $who = [System.Text.Encoding]::Unicode.GetString($bytes, 2, [math]::Min($len * 2, $bytes.Length - 2)) -replace '[^\x20-\x7E]',''
+      }
     }
-  } | Sort-Object SizeMB -Descending | Format-Table -AutoSize
+  }
+  Write-Host ('  lock file: {0}' -f $lock.Name)
+  if ($who.Trim()) { Write-Host ('  opened by: {0}' -f $who.Trim()) -ForegroundColor Yellow }
+  Write-Host '  A lock file left behind after a crash is safe to delete once that person has closed the document.'
+} else { Write-Host '  none' }
 
 Write-Host ''
-Write-Host "Currently signed in: $me" -ForegroundColor Cyan
-Write-Host 'Never remove a profile that is Loaded = True, or one belonging to a service account.'
+Write-Host '--- a process on this machine ---' -ForegroundColor Cyan
+Write-Host 'Windows has no command that lists handle owners, so use Resource Monitor:'
+Write-Host '  1. Run  resmon'
+Write-Host '  2. CPU tab, expand Associated Handles'
+Write-Host ('  3. Search for:  {0}' -f $leaf)
+Write-Host '  4. It names the process. Close that app properly rather than killing it.'
 Write-Host ''
-Write-Host 'To remove one, by SID, once you are sure:'
-Write-Host '  Get-CimInstance Win32_UserProfile | Where-Object SID -eq "<SID>" | Remove-CimInstance'
-Write-Host ''
-Write-Host 'Check with whoever owns the machine first. A profile holds desktop files,'
-Write-Host 'saved passwords and Outlook data, and removing it is not reversible.'`);
+Write-Host 'Explorer itself is a common culprit on a folder that will not delete, usually a'
+Write-Host 'thumbnail or preview handler. Restarting it clears that without losing anything.'`);
+
+S('disk-reclaim','perf','Reclaim disk space',['admin','changes','risk'],
+'Adds up every candidate on a full Windows disk with a size against it, and with <span class="mono">-Clear</span> removes the ones that are safe to remove without asking anybody: the Windows Update download cache, Delivery Optimization, the error report queue and the Recycle Bin.<br><br>It reports only by default, so pasting it deletes nothing. <b>Mention the Recycle Bin before you use -Clear</b> - it empties it for every user on the machine and plenty of people treat it as a filing system.<br><br>The component store is usually the biggest single win on an older build and is not touched here, because it takes twenty minutes and cannot be safely interrupted. The command is printed at the end for when you have the time.',
+String.raw`
+function Reclaim-Disk {
+  param(
+    [switch] $Clear
+  )
+
+  function Size($p) {
+    if (-not (Test-Path $p)) { return 0 }
+    (Get-ChildItem $p -Recurse -File -Force -ErrorAction SilentlyContinue |
+      Measure-Object Length -Sum).Sum
+  }
+
+  $free = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'").FreeSpace
+  Write-Host ''
+  Write-Host ('Free on C: {0} GB' -f [math]::Round($free / 1GB, 1)) -ForegroundColor Cyan
+  Write-Host ''
+
+  $wu  = "$env:SystemRoot\SoftwareDistribution\Download"
+  $do  = "$env:SystemRoot\SoftwareDistribution\DeliveryOptimization"
+  $wer = "$env:ProgramData\Microsoft\Windows\WER"
+  $rb  = 0
+  try { $rb = (Get-ChildItem 'C:\$Recycle.Bin' -Recurse -File -Force -ErrorAction SilentlyContinue |
+               Measure-Object Length -Sum).Sum } catch { }
+  $hib = 0
+  if (Test-Path 'C:\hiberfil.sys') { $hib = (Get-Item 'C:\hiberfil.sys' -Force).Length }
+
+  $rows = @(
+    [PSCustomObject]@{ What = 'Windows Update downloads';  MB = [int]((Size $wu)  / 1MB); Safe = 'yes' }
+    [PSCustomObject]@{ What = 'Delivery Optimization';     MB = [int]((Size $do)  / 1MB); Safe = 'yes' }
+    [PSCustomObject]@{ What = 'Error report queue';        MB = [int]((Size $wer) / 1MB); Safe = 'yes' }
+    [PSCustomObject]@{ What = 'Recycle Bin (all users)';   MB = [int]($rb / 1MB);         Safe = 'yes, but ask' }
+    [PSCustomObject]@{ What = 'Your temp folder';          MB = [int]((Size $env:TEMP) / 1MB); Safe = 'Clear temp folders script' }
+    [PSCustomObject]@{ What = 'Windows temp folder';       MB = [int]((Size "$env:SystemRoot\Temp") / 1MB); Safe = 'Clear temp folders script' }
+    [PSCustomObject]@{ What = 'Windows.old';               MB = [int]((Size 'C:\Windows.old') / 1MB); Safe = 'removes itself after 10 days' }
+    [PSCustomObject]@{ What = 'Downloads folder';          MB = [int]((Size "$env:USERPROFILE\Downloads") / 1MB); Safe = 'THEIRS - ask first' }
+    [PSCustomObject]@{ What = 'Hibernation file';          MB = [int]($hib / 1MB); Safe = 'powercfg /h off, kills Fast Startup' }
+  )
+  $rows | Format-Table What, MB, Safe -AutoSize
+
+  if (-not $Clear) {
+    Write-Host 'Reported only. Nothing has been removed.' -ForegroundColor Cyan
+    Write-Host 'Run it again as  Reclaim-Disk -Clear  to empty the four marked yes.' -ForegroundColor Cyan
+  } else {
+    Write-Host '--- clearing ---' -ForegroundColor Yellow
+    Stop-Service wuauserv -Force -ErrorAction SilentlyContinue
+    Remove-Item "$wu\*" -Recurse -Force -ErrorAction SilentlyContinue
+    Start-Service wuauserv -ErrorAction SilentlyContinue
+    Write-Host '  Windows Update downloads cleared'
+
+    try { Delete-DeliveryOptimizationCache -Force -ErrorAction Stop; Write-Host '  Delivery Optimization cleared' }
+    catch { Write-Host '  Delivery Optimization: cmdlet not on this build, skipped' }
+
+    Remove-Item "$wer\ReportQueue\*","$wer\ReportArchive\*" -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host '  error report queue cleared'
+
+    Clear-RecycleBin -Force -ErrorAction SilentlyContinue
+    Write-Host '  Recycle Bin emptied'
+
+    Start-Sleep -Seconds 2
+    $after = (Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'").FreeSpace
+    Write-Host ''
+    Write-Host ('Free on C: was {0} GB, now {1} GB.' -f
+      [math]::Round($free / 1GB, 2), [math]::Round($after / 1GB, 2)) -ForegroundColor Green
+  }
+
+  Write-Host ''
+  Write-Host '--- component store (WinSxS) ---' -ForegroundColor Cyan
+  Dism.exe /Online /Cleanup-Image /AnalyzeComponentStore | Select-String 'Size|Reclaimable|Recommended'
+  Write-Host 'If cleanup is recommended:  Dism.exe /Online /Cleanup-Image /StartComponentCleanup'
+  Write-Host 'Twenty minutes, cannot be interrupted safely, so not during a call.'
+}
+
+Reclaim-Disk`);
 
 S('disk-profiles-clean','perf','Clear everyone except the person sat at the machine',['admin','changes','risk'],
 'The hot-desking ticket, done properly. Walk up to the machine, open an elevated PowerShell, paste this. It works out who is actually sat there, protects them and anything the machine depends on, and then asks you about every other profile one at a time with its size and last-used date.<br><br><b>Run it with -DryRun first.</b> That prints both tables and stops without asking you anything, so you can see exactly what it would offer before it offers it.<br><br><b>What it protects, and tells you it protected:</b> the signed-in console user, anyone with a disconnected session still holding files, any account with a running process, any account a Windows service starts as, the built-in and system profiles, and the account you are running as. Each one is listed with the reason, because a thing silently withheld is worse than a thing refused out loud.<br><br><b>Y</b> deletes, <b>N</b> keeps, <b>A</b> does the rest after one confirmation showing the total, <b>Q</b> stops. Enter on its own means No.<br><br>Age is shown but decides nothing - you asked for presence to be the rule, and presence is the rule. A profile last used yesterday by somebody who has since moved desks is still fair game; that is your call to make with the person in front of you, not a number in a script.<br><br><b>Why it is a function.</b> A script containing Read-Host pasted into a console eats its own remaining lines as the answers to its prompts. Defining a function and calling it on the last line means the prompts wait for you.<br><br>Removing a profile takes the desktop, saved passwords and any local Outlook data with it. There is no undo.',
@@ -3273,7 +3079,6 @@ const GUIDES = [
   'Check winget is there, then find the exact package Id. Put the name in the App box at the top first. [[winget-check]] [[winget-search]]',
   'Before you install anything, see what else on the machine is out of date. People raise one app and three more are due. One visit beats three. [[winget-outdated]]',
   'Install or update. Warn the user first, because the app closes while it works. [[winget-install]] [[winget-upgrade-one]]',
-  'If they are due Slack, VPN, Chrome, VS Code or Zoom, do the lot in one pass. [[winget-ours]]',
   'If an install fails, check the installer events before retrying. 1603 is usually a pending reboot or a file in use. [[install-failures]] [[pending-reboot]]',
   'On a Mac, macOS updates go through Software Update rather than winget. [[mac-updates]]',
   'Removing something rather than adding it, or clearing a broken install before you retry. [[winget-uninstall]]',
@@ -3296,7 +3101,7 @@ const GUIDES = [
  steps:[
   'Ask what slow means: slow to boot, slow all the time, one app slow, or slow since a certain day. It changes where you look.',
   'Take the snapshot first so you know what you are dealing with: model, age, RAM, uptime. [[sys-snapshot]]',
-  'Check uptime. A huge number of slow PCs have not been restarted in weeks. Fast Startup means shutting down does not reset it, only Restart does. [[uptime]] [[pending-reboot]]',
+  'Check uptime in Task Manager, Performance tab. A huge number of slow PCs have not been restarted in weeks, and Fast Startup means shutting down does not reset it - only Restart does. [[pending-reboot]]',
   'Open Task Manager (Ctrl + Shift + Esc), go to Performance and watch CPU, Memory and Disk for a minute of normal use. Memory above about 85% means RAM pressure. Disk pinned at 100% suggests a failing drive or an AV scan.',
   'Find the culprit processes. [[top-cpu]] [[top-mem]]',
   'Check free space. Under 10% free on C: will slow everything down. [[disk-space]] [[clear-temp]] [[big-folders]]',
@@ -3306,8 +3111,8 @@ const GUIDES = [
   'Look at what the machine has been complaining about. [[recent-errors]] [[app-crashes]]',
   'On a laptop that is slow and hot, check the battery: a worn one throttles the whole machine. [[battery-report]]',
   'Run perfmon /rel (Reliability Monitor) for a timeline of crashes and failed updates.',
-  'If one app is slow rather than the machine, Process Monitor will tell you what it is waiting on. Filter first. [[sys-procmon]]',
-  'If the hardware is simply underpowered, raise it for replacement rather than chasing software fixes. Grab the report for the ticket. [[collect-report]]'
+  'If one app is slow rather than the whole machine, that is a different problem: check its own logs, and whether it is waiting on the network or a mapped drive rather than on this PC.',
+  'If the hardware is simply underpowered, raise it for replacement rather than chasing software fixes. Put the model, age and RAM from the first step on the ticket.'
  ]},
 {id:'g-mac', title:'Mac triage', sub:'Where to start on a MacBook',
  steps:[
@@ -3323,7 +3128,7 @@ const GUIDES = [
   'Battery complaints: cycle count and condition. [[mac-battery]]',
   'What is actually installed, with dates. [[mac-apps]]',
   'Before you close it off, check FileVault, the firewall and MDM enrolment are all as they should be. [[mac-security]]',
-  'Attach one file to the ticket rather than pasting output piecemeal. [[mac-report]]'
+  'Put what you found and what you changed on the ticket before you hand it on.'
  ]},
 {id:'g-slack', title:'Slack not working', sub:'Will not load, blank screen, sign-in loop, no audio',
  steps:[
@@ -3474,10 +3279,10 @@ const GUIDES = [
  steps:[
   'Get the exact path and put it in the File box at the top. Just the file name works too.',
   'Ask what they were doing. A file open in Excel or a PDF reader on another machine is the answer more often than anything technical.',
-  'Find out what is actually holding it. This is the question Windows refuses to answer and Sysinternals does. [[sys-handle-file]]',
+  'Find out what is holding it. This checks the three places the answer usually is: open over a share, an Office lock file that names the person, or a process on this machine. [[locked-file]]',
   'If the answer is a process on this machine, close that app properly rather than killing it, so nothing is lost.',
-  'If you need to see it visually, Process Explorer does the same job: Ctrl+F, type the file name, and it shows you the process. [[sys-procexp]]',
-  'A file on a share held open by someone else: check who is connected before you do anything. [[sys-psloggedon]]',
+  'If it is open over a share, the person holding it is named. Ask them to close it before you force anything - forcing it loses whatever they had not saved.',
+  'An Office document left locked after a crash leaves a ~$ file behind that names whoever had it. Once they have genuinely closed the document, that lock file is safe to delete.',
   'Explorer itself is a common culprit on a folder that will not delete, usually a thumbnail or preview handler. Restart it and try again. [[restart-explorer]]',
   'A file left locked by something that has since crashed usually clears on a restart. Worth saying so before you go further.',
   'Never just kill the owning process on a file the user is editing. Ask first, every time.'
@@ -3486,21 +3291,16 @@ const GUIDES = [
  steps:[
   'Do not kill the process or delete files yet. That destroys evidence. Note the time, the PID and what you have seen.',
   'Inspect the process: path, signature, parent and command line. Put its name in the Process box. [[proc-inspect]]',
-  'If Sysinternals is on the share, Process Explorer is faster and tells you more. Turn on Verify Image Signatures and the VirusTotal column once and every process is graded for you from then on. [[sys-check]] [[sys-path]] [[sys-procexp]]',
-  'Watch the connections live rather than in a static table. [[sys-tcpview]]',
-  'What files does it have open? Often more revealing than what it is talking to. [[sys-handle-proc]]',
+  'See what it is listening on, and what it is connected to. [[listening-ports]]',
   'Red flags: runs from AppData, Temp, ProgramData or Public; signature not Valid; parent is a document, a browser, cmd, powershell or rundll32; encoded or obfuscated command line. [[procs-userpaths]] [[unsigned-procs]]',
   'Look up a specific address rather than sweeping everything. Put it in the IP box. [[ip-lookup]]',
   'Only if you need the full picture, and knowing it sends every address to a third party. [[conn-owners]]',
-  'Check the file itself. Put the path in the File box. [[file-hash]] [[file-sig]] [[sys-sigcheck]]',
-  'Sweep a whole profile for unsigned executables. [[sys-sigcheck-scan]]',
-  'Look for persistence. Our scripts cover the common locations; Autoruns covers all of them, including services, drivers, WMI subscriptions and logon scripts. [[sched-tasks]] [[startup-items]] [[new-exes]] [[sys-autoruns-gui]]',
-  'For a real investigation, take the full Autoruns export and attach it to the ticket. [[sys-autorunsc]]',
-  'Check for a signed program loading an unsigned library, which is how side-loading hides. [[sys-listdlls]]',
+  'Check the file itself. Put the path in the File box. [[file-hash]] [[file-sig]]',
+  'Look for persistence in the places it usually hides: scheduled tasks, Run keys and startup folders, and anything newly written. [[sched-tasks]] [[startup-items]] [[new-exes]]',
+  'These cover the common locations, not all of them. Services, drivers, WMI subscriptions and logon scripts can all hold persistence too, and finding those properly is an incident response job rather than a desk-side one.',
   'Check logons, and PowerShell history if the investigation warrants it. [[failed-logons]] [[success-logons]] [[ps-history]]',
   'Check Defender, the firewall, the hosts file and what the machine has been resolving. When you are ready to clean up rather than observe, update signatures and scan. [[defender-status]] [[defender-scan]] [[firewall-status]] [[hosts-check]] [[dns-cache]]',
   'Check who has been signing in, and who holds local admin on this machine. [[local-admins]] [[rdp-logons]]',
-  'Check what the account can actually reach, which is not always what the groups suggest. [[sys-accesschk]]',
   'If anything fails the checks, isolate the machine from the network (do not power it off) and escalate as a potential incident.'
  ]},
 {id:'g-disk', title:'Disk full', sub:'Low disk space warnings, updates failing for space',
@@ -3508,10 +3308,9 @@ const GUIDES = [
   'See how bad it is. [[disk-space]]',
   'Measure what could be freed before deleting anything. It prints a size against each candidate and the command for it, so you can tell the user what you are about to reclaim rather than guessing. [[disk-reclaim]]',
   'Clear temp files - the safest win and usually a quick one. [[clear-temp]]',
-  'Then the four that are safe to clear without asking anyone: the Windows Update download cache, Delivery Optimization, the error report queue and the Recycle Bin. <b>Mention the Recycle Bin first</b> - plenty of people use it as a filing system. [[disk-clean-run]]',
-  'On a shared or hot-desked machine the space is almost never theirs: every person who has ever logged in left a profile behind. This lists them by size with last-used dates, which usually makes the problem obvious. It needs admin rights, so it is ours to fix, not something they have done wrong. [[disk-profiles]]',
-  'To actually clear them, use the interactive one. It works out who is sat at the machine, protects them along with anything running or anything a service depends on, lists what it protected and why, then asks you about everyone else one at a time. <b>Start it with -DryRun</b> to see both tables without being asked anything. <b>Agree it with the person in front of you</b> - a profile takes their desktop, saved passwords and any local Outlook data with it, and there is no undo. [[disk-profiles-clean]]',
-  'Find what is actually big. The Sysinternals one is much faster than walking the tree in PowerShell. [[sys-du]] [[big-folders]] [[big-files]]',
+  'When you are ready to actually clear the safe ones, run that same script as <span class="mono">Reclaim-Disk -Clear</span>. <b>Mention the Recycle Bin first</b> - it empties it for every user and plenty of people treat it as a filing system.',
+  'On a shared or hot-desked machine the space is almost never theirs: every person who has ever logged in left a profile behind. It needs admin rights, so it is ours to fix, not something they have done wrong. This works out who is sat at the machine, protects them along with anything running and anything a service depends on, lists what it protected and why, then asks you about everyone else one at a time. <b>Start it with -DryRun</b> for the read-only view. <b>Agree it with the person in front of you</b> - a profile takes their desktop, saved passwords and any local Outlook data with it, and there is no undo. [[disk-profiles-clean]]',
+  'Find what is actually big. [[big-folders]] [[big-files]]',
   'Check whether a file-sync client is holding a large offline cache, which is a common reason a laptop fills up for no obvious reason. [[gdrive-space]] [[ms-kfm]]',
   'Still tight? The component store is the last big one, and it is often gigabytes on an older build: <span class="mono">Dism.exe /Online /Cleanup-Image /StartComponentCleanup</span>. It can take twenty minutes and should not be interrupted, so not during a call.',
   'Ask before touching Downloads or anything personal. Freeing space by deleting someone&rsquo;s files is how you turn one ticket into two.',
@@ -3526,7 +3325,7 @@ const GUIDES = [
   'Test RAM: run mdsched.exe and choose restart now.',
   'Event 41 with no bugcheck means power was lost. Check the supply, the battery and whether it is overheating.',
   'Did it start after an update? [[hotfixes]]',
-  'Attach the report to the ticket before you escalate. [[collect-report]]'
+  'Put the bugcheck code, the faulting driver and what you have already tried on the ticket before you escalate. The code alone is what the next person needs.'
  ]},
 {id:'g-updates', title:'Windows Update failing', sub:'Stuck downloading, error codes, keeps failing',
  steps:[
@@ -3558,16 +3357,14 @@ const GUIDES = [
  steps:[
   'Confirm who you are speaking to and the machine name. Put the machine name in the Computer box at the top.',
   'Check it is online and who is logged on. [[remote-ping]] [[remote-user]] [[logged-on]]',
-  'If PsTools are on the share they work where PowerShell remoting is not set up, because they go over the admin share rather than WinRM. [[sys-psinfo]] [[sys-pslist]]',
   'Grab a snapshot without disturbing them. [[remote-snapshot]] [[remote-disk]]',
   'Connect: Quick Assist (they press Ctrl + Windows + Q and give you the code) or Remote Assistance. [[msra]]',
   'Grab logs or files without interrupting them. [[remote-cshare]]',
   'If you need a prompt on the machine rather than one command at a time. Requires WinRM, which the last script enables. [[ps-session]] [[enable-remoting]]',
-  'For the small number of jobs nothing else does, and only with the EDR conversation already had. [[sys-psexec-system]]',
   'Ask before closing anything, and warn before restarts. [[remote-restart]]',
   'Before you hand a machine back or send it for repair, confirm it is still encrypted. [[bitlocker]]',
   'Anything with the red Interrupts the user badge needs saying out loud before you run it.',
-  'Finish by collecting one file for the ticket rather than pasting output piecemeal. [[collect-report]]',
+  'Write up what you changed while it is fresh, not at the end of the day.',
   'Write up what you did. The Notes tab here is a scratchpad for exactly that.'
  ]},
 {id:'g-linux', title:'Linux box triage: where to start', sub:'A server is unhappy and you have just been given a shell',
@@ -5063,7 +4860,6 @@ const BADGE = {
   net:['Internet','b-net','Needs a connection. Everything without this badge works offline.'],
   mac:['macOS Terminal','b-mac','For Terminal on a Mac, not PowerShell. Command + Space, type Terminal.'],
   linux:['Linux shell','b-linux','For a Linux shell, not PowerShell. Where commands differ between distributions it works out which one it is on.'],
-  sys:['Needs Sysinternals','b-sys','Needs the Sysinternals binaries on disk, with the path set in the box at the top.'],
   mod:['Needs a PowerShell module','b-mod','Installs or imports a PowerShell module before it will run.']
 };
 
@@ -5115,7 +4911,7 @@ const ICON = {
 };
 const CAT_ICON = {
   info:'info', software:'bolt', mac:'mac', linux:'terminal', network:'net', cloud:'chat', ms365:'grid',
-  security:'shield', sysint:'tool', perf:'slow', accounts:'user', remote:'screen', hardware:'chip',
+  security:'shield', perf:'slow', accounts:'user', remote:'screen', hardware:'chip',
   updates:'sync', print:'print'
 };
 const TILE_ICON = {'g-software':'bolt','g-slow':'slow','g-vpn':'net','g-slack':'chat','g-mac':'mac',
@@ -5458,15 +5254,6 @@ function renderMain(){
   } else {
     const c = catOf(view) || CATS[0];
     m.innerHTML = headBlock(c.name, fillNote()) +
-      (c.id === 'sysint'
-        ? '<div class="callout">' + svg('shield') +
-          '<div><b>Two things before you use these.</b> They need the Sysinternals binaries on ' +
-          'disk - download the suite from Microsoft, put it in a folder you trust, and set the ' +
-          'Sysinternals box at the top to that path. And PsExec, while a proper Microsoft admin ' +
-          'tool, is also in almost every ransomware playbook, so security software will alert ' +
-          'when it runs. If you are using it at work, tell whoever watches those alerts before ' +
-          'you need it rather than in the middle of an incident.</div></div>'
-        : '') +
       activeScripts().filter(s => s.cat === c.id).map(scriptCard).join('');
   }
 }

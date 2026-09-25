@@ -3,6 +3,67 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.9.0] — 2026-09-25
+
+A cull, prompted by going through the whole thing properly. 201 scripts down to
+179, and the page is better for it.
+
+### Removed - the entire Sysinternals section, 18 scripts
+Every one of them needed binaries downloaded and a path configured, which had
+not been done and was not going to be. A section that does not work is worse
+than no section.
+
+Checking what would actually be lost: **16 of the 18 were already covered by
+native scripts in the toolkit.** `conn-owners` does what TCPView does.
+`startup-items` plus `sched-tasks` plus `procs-userpaths` cover Autoruns.
+`remote-snapshot` covers PsInfo. `unsigned-procs` covers sigcheck sweeps.
+`big-folders` covers du.
+
+The genuine gap was "what is holding this file open", which Windows has no
+native command for. That is replaced by a new script that checks the three
+places the answer usually is - open over a share, an Office lock file that names
+the person, or a local process - and points at Resource Monitor for the last
+case, which is on every machine.
+
+The `sysint` category, the `Needs Sysinternals` badge and the **Sysinternals**
+fill-in box go with it. The fill-in bar is one box shorter everywhere.
+
+### Removed
+- **How long since last reboot.** Task Manager shows it faster, and you are
+  already in Task Manager on a slow-PC ticket.
+- **Collect everything into one file for the ticket**, and its macOS twin. The
+  Linux one stays: writing output to a file and scp-ing it off a server is the
+  normal way to work there, which is not true of a desk-side Windows job.
+- **Update the usual set in one pass.** A list of five applications that were
+  not yours, which you would have had to edit before first use.
+
+### Merged
+- **Reclaim disk space** and **Actually clear the safe ones** were one job split
+  across two scripts. Now one, reporting by default, with `-Clear` to act.
+
+### Changed
+- `g-suspicious` rewritten around the native scripts. It now ends by saying
+  plainly that services, drivers, WMI subscriptions and logon scripts can hold
+  persistence too, and that finding those properly is an incident response job
+  rather than a desk-side one - which is more honest than implying a tool
+  nobody has installed would have covered it.
+
+## [1.8.3] — 2026-09-25
+
+### Removed
+- **"Old user profiles eating a shared machine".** It listed every profile and
+  then told you *"never remove one that is Loaded, or one belonging to a service
+  account"* - making the operator do by eye the exact safety check that
+  `disk-profiles-clean` performs and proves, with a PROTECTED table giving the
+  reason against each one.
+
+  `-DryRun` on the interactive script already produces the read-only view, and a
+  better one. So the pair was two scripts covering one job where the redundant
+  half was also the less safe half, and the less safe half is the one somebody
+  reaches for when they are in a hurry.
+
+  Its guide step has been folded into the one below it rather than deleted.
+
 ## [1.8.2] — 2026-09-25
 
 ### Changed
