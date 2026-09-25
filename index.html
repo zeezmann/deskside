@@ -1739,26 +1739,15 @@ function Clear-OtherProfiles {
   Write-Host ''
   Write-Host 'Working out who is on this machine...' -ForegroundColor Cyan
 
-  # 1. The person physically sat here. This is NOT the account you elevated as:
-  #    you are running with your own admin credentials, they are signed in at
-  #    the console. Getting these two confused is how you delete the profile of
-  #    the person watching you do it.
   $consoleUser = (Get-CimInstance Win32_ComputerSystem).UserName
   $consoleSid  = ToSid $consoleUser
   if ($consoleUser) { Write-Host ("  at the console : {0}" -f $consoleUser) -ForegroundColor Green }
   else              { Write-Host '  at the console : nobody signed in' -ForegroundColor Yellow }
 
-  # 2. You.
   $meSid  = ([Security.Principal.WindowsIdentity]::GetCurrent()).User.Value
   $meName = ([Security.Principal.WindowsIdentity]::GetCurrent()).Name
   Write-Host ("  running as     : {0}" -f $meName) -ForegroundColor Green
 
-  # 3. Accounts a service starts as. Removing one of these profiles breaks the
-  #    service on next start, usually days later, and nobody connects the two.
-  # Services report their account as ".\svc_backup", "MACHINE\svc_backup" or
-  # "DOMAIN\svc_backup" depending on how they were configured, while the profile
-  # resolves to one specific form. Keep both the full string and the bare name
-  # so the comparison cannot miss on a prefix.
   $svcAccounts = @()
   Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | ForEach-Object {
     if ($_.StartName) {
@@ -1769,8 +1758,6 @@ function Clear-OtherProfiles {
   }
   $svcAccounts = @($svcAccounts | Where-Object { $_ } | Sort-Object -Unique)
 
-  # 4. Anyone with a process running right now, which catches disconnected
-  #    sessions and scheduled tasks that Loaded on its own can miss.
   $busy = @()
   Get-Process -IncludeUserName -ErrorAction SilentlyContinue | ForEach-Object {
     if ($_.UserName) {
@@ -1814,14 +1801,10 @@ function Clear-OtherProfiles {
       continue
     }
 
-    # Only measure the ones we are going to offer - it is the slow part.
     $bytes = (Get-ChildItem $path -Recurse -File -Force -ErrorAction SilentlyContinue |
               Measure-Object Length -Sum).Sum
     if (-not $bytes) { $bytes = 0 }
 
-    # Windows updates LastUseTime inconsistently, so take NTUSER.DAT as a second
-    # opinion and trust whichever is later. The error should fall towards
-    # "somebody still uses this".
     $lastUse = $prof.LastUseTime
     $lastNt  = $null
     $nt = Join-Path $path 'NTUSER.DAT'

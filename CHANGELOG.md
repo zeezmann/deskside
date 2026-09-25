@@ -3,6 +3,37 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.8.2] — 2026-09-25
+
+### Changed
+- **Stripped the design rationale out of the profile cleaner.** Seventeen
+  comment lines explaining why it was written that way, in a script whose whole
+  purpose is being pasted into somebody else's console. That reasoning belongs
+  in the description on the card - the part you read *before* you copy - and it
+  was already there, said twice. The script is now 151 lines with no comments at
+  all, and the structure those comments described is visible in what it prints
+  as it runs.
+
+### Not changed, deliberately
+- The commented-out lines in `ol-safe`, `sys-sigcheck`, `sys-pslist`,
+  `dns-lookup`, `bitlocker`, `secure-channel`, `mac-updates`, `mac-finder`,
+  `sys-psexec-system`, `sys-accesschk` and `ms-leaver` stay. Those are not
+  commentary: each is an alternative command with a one-line label saying when
+  to reach for it. The label and the command together are the content.
+- The line in `winget-ours` telling you to change the app list to your own stays
+  for the same reason - an instruction, not an explanation.
+
+Across all 202 scripts that leaves 34 comment lines in 1,593 lines of code, and
+every one is either a command you might run or something you must do.
+
+## [1.8.1] — 2026-09-25
+
+### Fixed
+- The README claimed 196 scripts when there were 202. Same drift as before: six
+  added without the count following them.
+- `LICENSE` was missing from the release archive. Already in the repository, but
+  the archive is meant to be the complete thing.
+
 ## [1.8.0] — 2026-09-25
 
 ### Changed - the profile cleaner asks about presence, not age
