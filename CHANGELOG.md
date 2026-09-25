@@ -3,6 +3,43 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.0] — 2026-09-25
+
+### Changed
+- **New accent: azure into cyan.** The gradient is the point - a flat colour
+  looks like a choice, a gradient that shifts hue looks like a decision. It runs
+  through the logo, the primary button, the tile icons on hover and the hero
+  wash. `--accent-grad` is a separate token from `--accent2` because the far end
+  of a gradient and a solid hover fill have very different contrast needs.
+  5.23:1 against white, so it passes AA for text.
+- Favicon and theme-colour follow the accent, with a separate dark-mode
+  theme-colour so the phone browser chrome matches the page.
+
+### Removed
+- Secret handover, email header analyser, certificate reader, encoded-command
+  decoder and the path checker. Nine utilities left. The implementations are
+  gone rather than hidden, so the file is about 60 KB lighter.
+
+### Fixed - mobile, and it was bad
+- **Every script view scrolled sideways by up to 720px on a phone.** A grid item
+  defaults to `min-width:auto`, so one wide line of PowerShell stretched the
+  content column to main's 1080px max-width and dragged the sticky top bar with
+  it. Invisible on a laptop. Now `minmax(0,1fr)` on the track and `min-width:0`
+  on the column.
+- The run-box table had no scroll container, adding another 150px of drag.
+- Touch targets: the Copy button was 26px tall, the star 22px, the nav buttons
+  32px. All now clear 38px under `pointer:coarse`.
+- Those touch rules had no effect at first because the block sat above the
+  utility CSS and later rules of equal specificity won. It is now last in the
+  stylesheet, and a test asserts the media query still matches.
+- Code is 13px on small screens with momentum scrolling, and the horizontal
+  rail snaps so it stops half way through a label.
+
+### Tests
+- 51. Nine of them walk seven device sizes across nine views asserting zero
+  horizontal overflow, because this is the class of bug nobody sees until a
+  colleague messages about it.
+
 ## [1.3.0] — 2026-09-25
 
 ### Added
