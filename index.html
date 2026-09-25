@@ -30,7 +30,7 @@
      fighting the page. --on-accent is whatever text sits ON the accent: a token
      rather than a literal, because it has to flip between the two themes. */
   --bg:#fafafb; --surface:#ffffff; --surface2:#f3f3f7; --sunk:#edeef3;
-  --ink:#131318; --ink2:#4a4a57; --muted:#71717f;
+  --ink:#131318; --ink2:#4a4a57; --muted:#686874;   /* 4.74:1 on the palest surface - AA on 11px text */
   --line:#e5e5ec; --line2:#f0f0f4; --border:rgba(19,19,24,.09);
   --accent:#1668d9; --accent2:#0f57bd; --accent-grad:#06a6d4; --accent-soft:#e3f0fe;
   --on-accent:#ffffff; --accent-glow:rgba(22,104,217,.34);
@@ -169,7 +169,7 @@ button,input,textarea{font:inherit;color:inherit}
 .nav button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .nav button.on::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;
   border-radius:0 3px 3px 0;background:var(--accent)}
-.nav .ct{font-size:11px;color:var(--muted);background:var(--surface2);border-radius:20px;
+.nav .ct{font-size:11px;color:var(--ink2);background:var(--surface2);border-radius:20px;
   padding:1px 7px;min-width:24px;text-align:center;font-variant-numeric:tabular-nums}
 .nav button.on .ct{background:var(--surface);color:var(--accent)}
 .nav .ic{width:16px;height:16px;flex:none;opacity:.62}
@@ -222,6 +222,9 @@ button,input,textarea{font:inherit;color:inherit}
 /* ---------- main ---------- */
 main{padding:26px 26px 90px;min-width:0;max-width:1080px}
 .vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.skip{position:absolute;left:-9999px;top:0;z-index:200;background:var(--accent);color:var(--on-accent);
+  padding:12px 18px;border-radius:0 0 10px 0;font-weight:600;text-decoration:none}
+.skip:focus{left:0}
 .head{margin:0 0 20px}
 .head h1{font-family:var(--display);font-size:27px;line-height:1.2;letter-spacing:-.028em;
   margin:0 0 5px;font-weight:700}
@@ -281,9 +284,9 @@ main{padding:26px 26px 90px;min-width:0;max-width:1080px}
 .tile .tt{display:block;font-family:var(--display);font-weight:650;font-size:16.5px;
   letter-spacing:-.02em;line-height:1.28}
 .tile .tb{display:block;color:var(--muted);font-size:13px;margin-top:4px;line-height:1.45}
-.tile .tn{position:absolute;top:14px;right:16px;font:700 12px/1 var(--mono);color:var(--line);
-  letter-spacing:-.04em}
-.tile:hover .tn{color:var(--accent-soft)}
+.tile .tn{position:absolute;top:14px;right:16px;font:700 12px/1 var(--mono);
+  color:color-mix(in srgb,var(--muted) 55%,transparent);letter-spacing:-.04em}
+.tile:hover .tn{color:var(--accent)}
 
 .quick{display:flex;gap:9px;flex-wrap:wrap}
 .quick button{display:inline-flex;align-items:center;gap:8px;background:var(--surface);
@@ -611,6 +614,7 @@ textarea#notes:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accen
 </style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to the content</a>
 
 <div class="app">
   <aside class="rail">
@@ -631,6 +635,7 @@ textarea#notes:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accen
         <div class="search">
           <svg class="mag" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
           <input id="q" type="search" autocomplete="off" spellcheck="false"
+                 aria-label="Search scripts and guides"
                  placeholder="Search scripts and guides - slack, vpn, winget, mac, locked, slow">
           <span class="hint">press /</span>
         </div>
@@ -659,7 +664,7 @@ textarea#notes:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accen
         <span class="fill w" data-fill="SYS"><label for="v_SYS">Sysinternals</label><input id="v_SYS" data-var="SYS" spellcheck="false"></span>
       </div>
     </div>
-    <main id="main"></main>
+    <main id="main" tabindex="-1"></main>
   </div>
 </div>
 <div class="palwrap" id="palwrap" role="dialog" aria-modal="true" aria-label="Jump to anything">
@@ -667,6 +672,7 @@ textarea#notes:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accen
     <div class="pal-in">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
       <input id="palQ" type="text" autocomplete="off" spellcheck="false"
+             aria-label="Jump to a script, guide, tool or shortcut"
              placeholder="Jump to a script, guide, tool or shortcut">
       <span class="pal-esc">esc</span>
     </div>
@@ -678,7 +684,7 @@ textarea#notes:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accen
     </div>
   </div>
 </div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 /* ============================================================

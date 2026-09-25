@@ -3,6 +3,44 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.1] — 2026-09-25
+
+A housekeeping pass after 1.4. Nothing here changes what the toolkit does; it
+changes what it claims, and who can read it.
+
+### Fixed - accessibility
+- `--muted`, which carries every piece of secondary text on the page, sat at
+  4.34:1 on the palest surface. AA wants 4.5 and 11px text is exactly where it
+  matters. Now #686874, worst case 4.74:1.
+- The sidebar count badges used `--muted` on `--surface2`, the worst pairing in
+  the file. They use `--ink2` now.
+- The 01-06 numbers on the front-page tiles were drawn in `--line`, a border
+  colour. In dark mode that was 1.23:1, which is not subtle, it is absent.
+- **Added a skip link.** With twenty items in the sidebar, reaching the content
+  by keyboard meant twenty tab presses.
+- The toast is `aria-live="polite"`, so "Copied to clipboard" is announced
+  rather than only shown.
+- The search box and the palette input have real labels. A placeholder is not
+  a label; it disappears the moment you type.
+
+### Fixed - documentation that had drifted
+- The README still advertised six utilities and a Secret handover tool that was
+  removed in 1.4, with a screenshot of it. It also described 25 tests covering
+  encryption that no longer exists.
+- All four repository screenshots were of the old green design, including the
+  one used as the link preview image.
+- **docs/DEPLOY.md was actively misleading.** It recommended requiring a pull
+  request on `main`, which is the wrong call for one person and gets turned off
+  within a week; and it pointed at Cloudflare Pages, which no longer exists as
+  described - a new project now lands in a Workers flow that asks for
+  `wrangler deploy` and fails. Rewritten around GitHub Pages, including the
+  Cloudflare grey-cloud step that silently prevents the certificate issuing.
+- `package.json` still said 1.0.0.
+
+### Checked and found correct
+- 158 scripts and 24 guides, which the README already said. Worth stating
+  because the temptation was to "fix" numbers that were right.
+
 ## [1.4.0] — 2026-09-25
 
 ### Changed

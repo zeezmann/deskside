@@ -1,5 +1,4 @@
 # Deskside
-[![tests](https://github.com/zeezmann/deskside/actions/workflows/ci.yml/badge.svg)](https://github.com/zeezmann/deskside/actions/workflows/ci.yml)
 
 A single HTML file that holds everything a service desk engineer reaches for: the
 commands, the order to try them in, and a handful of tools that do the job in the
@@ -19,8 +18,10 @@ because the guide you will want most is the one titled *No internet*.
 |---|---|
 | **158 scripts** | PowerShell and macOS, each with a plain-English description of what it does and when it lies to you |
 | **24 fix-it guides** | Numbered steps in the order an experienced engineer would actually work them |
-| **6 utilities** | Subnet calculator, password generator, file checksum, CSV inspector, diagram viewer, encrypted secret handover |
+| **9 utilities** | Subnet calculator, password generator, file checksum, CSV inspector, error code decoder, text comparison, Windows build lookup, paste cleaner, diagram viewer |
 | **35 run-box shortcuts** | The `.msc` and `.cpl` list, click to copy |
+
+Press **Ctrl+K**, or **Cmd+K** on a Mac, from anywhere to jump to any of it.
 
 Windows and macOS. Google Workspace and Microsoft 365, switchable, so you only
 ever see the half that applies to where you work.
@@ -37,31 +38,41 @@ search only helps people who already know what they are looking for.
 Type a machine name or a username into the fill-in boxes and every script on
 screen updates. **Copy** gives you the filled-in version, ready to paste.
 
-![The Sysinternals section](docs/screenshot-scripts.jpg)
+![The Network and VPN section in dark mode](docs/screenshot-scripts.jpg)
 
 Badges say what a script will do before you run it. **Makes changes** means it
 changes the machine. **Interrupts the user** is the one to watch: it closes their
 apps, drops their connection or restarts their machine. Anything without a badge
 only reads.
 
-### Secret handover
+### Utilities
 
-Seal a password with a passphrase so it can go in a ticket without the password
-going in the ticket. AES-256-GCM, key stretched with PBKDF2-SHA256 at 600,000
-iterations, fresh salt and IV every time, all of it in the page.
+Nine tools that do the job in the page rather than handing you a command to run
+somewhere else. They work offline like the rest of it, and nothing they touch
+leaves the browser.
 
-![Secret handover](docs/screenshot-secret.jpg)
+![The subnet calculator](docs/screenshot-utilities.jpg)
 
-**It is not Safenote.** There is no server here, so there is no burn-after-reading.
-Anyone holding the blob and the passphrase can open it as often as they like.
-Send the passphrase by a different route than the blob, and rotate the credential
-after handover.
+The ones that earn their place most often: the **error code decoder**, which turns
+`0x80070005` into "access denied, and here is which log to open"; **compare two
+outputs**, for when you have `ipconfig /all` from the machine that works and the
+one that does not; and **which Windows is this**, which turns a build number into
+a version and a support date, and tells you how old its own data is rather than
+quietly going stale.
 
 ---
+
+## Publishing your own copy
+
+[docs/DEPLOY.md](docs/DEPLOY.md) covers pushing it to GitHub, wiring up CI and
+putting it on a domain.
 
 ## Using it
 
 Download `index.html` and open it. That is the whole installation.
+
+It works on a phone and a tablet as well as a laptop, so it is worth having the
+link saved on whatever you are carrying.
 
 Put it on a shared drive if the team wants it, but make it **read-only** for
 everyone except two or three named people. Engineers paste commands out of it into
@@ -113,16 +124,19 @@ npx playwright install chromium
 npm test
 ```
 
-25 tests, run on every push. They cover the things that would quietly rot:
+51 tests, run on every push. They cover the things that would quietly rot:
 
 - the file loads with **zero external requests** — the offline promise, enforced
 - every script is reachable from a guide, and no guide points at a script that does not exist
 - a fill-in containing an apostrophe still produces valid PowerShell
 - the Google / Microsoft switch never leaves a dangling reference in any of its three states
-- the encryption round-trips, the same secret seals differently each time, and a
-  wrong passphrase or a tampered blob is refused rather than half-decrypted
-- the downloaded opener file decrypts on its own, in a clean browser, with no network
-- no sideways scroll on a phone
+- **seven screen sizes from 360px to 1024px, across nine views, with zero
+  horizontal overflow** — one grid property once cost 720px of sideways scroll on
+  a phone and nothing on a laptop, so this is now asserted rather than eyeballed
+- every touch target clears 38px, and the media query that makes that true still matches
+- the command palette ranks the obvious answer first
+- each utility mounts without error, and the ones with real logic are checked
+  against known-good answers rather than themselves
 
 If Chromium is already on the machine and you cannot download another copy:
 

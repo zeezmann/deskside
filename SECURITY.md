@@ -25,23 +25,10 @@ upstream cannot alter what your team pastes tomorrow.
   of any kind. There is a test that fails the build if one appears.
 - No credentials are stored in the file, and none should ever be added to it.
 - Favourites, notes and fill-in values live in browser local storage on that
-  machine only.
-
-## Secret handover
-
-AES-256-GCM, key derived with PBKDF2-SHA256 at 600,000 iterations, fresh 16-byte
-salt and 12-byte IV per seal, all performed with the Web Crypto API in the page.
-
-It is **not** a self-destructing note. There is no server, so a sealed blob can
-be opened as many times as someone likes. Send the passphrase by a different
-route than the blob, delete both copies after handover, and rotate the
-credential anyway.
-
-The downloadable opener file is a small HTML page containing the ciphertext and
-a decrypt form. It makes no network requests. Be aware that an HTML attachment
-asking for a passphrase looks exactly like a credential-harvesting page, because
-structurally it is the same shape: tell the recipient it is coming, and tell
-your security team the tool exists.
+  machine only. They are not synchronised anywhere and clearing browsing data
+  removes them.
+- The utilities that read a file - the checksum tool, the CSV inspector, the
+  diagram viewer - read it in the page. Nothing is uploaded.
 
 ## Reporting something
 
