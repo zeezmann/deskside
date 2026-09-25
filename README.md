@@ -16,15 +16,29 @@ because the guide you will want most is the one titled *No internet*.
 
 | | |
 |---|---|
-| **158 scripts** | PowerShell and macOS, each with a plain-English description of what it does and when it lies to you |
-| **24 fix-it guides** | Numbered steps in the order an experienced engineer would actually work them |
+| **196 scripts** | PowerShell, macOS and Linux, each with a plain-English description of what it does and when it lies to you |
+| **30 fix-it guides** | Numbered steps in the order an experienced engineer would actually work them |
 | **9 utilities** | Subnet calculator, password generator, file checksum, CSV inspector, error code decoder, text comparison, Windows build lookup, paste cleaner, diagram viewer |
 | **35 run-box shortcuts** | The `.msc` and `.cpl` list, click to copy |
 
 Press **Ctrl+K**, or **Cmd+K** on a Mac, from anywhere to jump to any of it.
 
-Windows and macOS. Google Workspace and Microsoft 365, switchable, so you only
-ever see the half that applies to where you work.
+Windows, macOS and Linux. Google Workspace and Microsoft 365, switchable, so
+you only ever see the half that applies to where you work.
+
+### Linux
+
+38 scripts and six guides for the machine you have just been given a shell on
+and know nothing about: triage, disk and inodes, systemd units and their logs,
+networking, users and access, packages, and the desktop side.
+
+![The Linux section](docs/screenshot-linux.jpg)
+
+Where a command forks between distribution families the script works out which
+one it is looking at rather than assuming — apt or dnf, ufw or firewalld or
+nftables, NetworkManager or netplan or systemd-networkd. A script that assumes
+wrong fails in a way that looks like the machine is broken, which is worse than
+no script at all.
 
 ### Fix-it guides
 
@@ -95,8 +109,13 @@ const BRAND = {
 };
 ```
 
-`MAINT` sits underneath it. Put your name and a review date in — a shared tool with
-no owner rots quietly until somebody runs something that no longer applies.
+`MAINT` sits underneath it with the name shown in the sidebar. Put yours in.
+
+There is deliberately **no review date**. A date nobody moves is worse than no
+date: it either announces that the file is unmaintained, or everyone learns to
+ignore it. The same reasoning is why the Windows build lookup states what it
+covers rather than when it was compiled — a coverage statement stays true,
+a freshness stamp does not.
 
 ## Adding your own scripts
 

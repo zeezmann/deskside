@@ -1,7 +1,7 @@
 {
   "name": "deskside",
-  "version": "1.4.0",
-  "description": "A single-file IT support toolkit. Scripts, fix-it guides and offline utilities for Windows and macOS.",
+  "version": "1.6.0",
+  "description": "A single-file IT support toolkit. Scripts, fix-it guides and offline utilities for Windows, macOS and Linux.",
   "type": "module",
   "private": true,
   "scripts": {

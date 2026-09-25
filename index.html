@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Deskside - IT field kit for Windows and macOS</title>
-<meta name="description" content="Deskside is a single-file IT support toolkit: copy-and-run PowerShell and shell scripts, step-by-step guides and offline utilities for Windows and macOS desk-side work. No install, no network needed.">
+<title>Deskside - IT field kit for Windows, macOS and Linux</title>
+<meta name="description" content="Deskside is a single-file IT support toolkit: copy-and-run PowerShell and shell scripts, step-by-step guides and offline utilities for Windows, macOS and Linux. No install, no network needed.">
 <meta name="author" content="Azeez Jimoh">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#1668d9" media="(prefers-color-scheme: light)">
@@ -12,8 +12,8 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%231668d9%22/%3E%3Cstop offset=%221%22 stop-color=%22%2306a6d4%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22url%28%23g%29%22/%3E%3Ctext x=%2232%22 y=%2244%22 font-family=%22system-ui,-apple-system,Segoe UI,sans-serif%22 font-size=%2230%22 font-weight=%22700%22 fill=%22%23ffffff%22 text-anchor=%22middle%22%3EDS%3C/text%3E%3C/svg%3E">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Deskside">
-<meta property="og:title" content="Deskside - IT field kit for Windows and macOS">
-<meta property="og:description" content="A single-file IT support toolkit: copy-and-run scripts, guides and offline utilities for Windows and macOS desk-side work.">
+<meta property="og:title" content="Deskside - IT field kit for Windows, macOS and Linux">
+<meta property="og:description" content="A single-file IT support toolkit: copy-and-run scripts, guides and offline utilities for Windows, macOS and Linux.">
 <meta property="og:url" content="https://toolkit.zeezmann.com/">
 <meta property="og:image" content="https://raw.githubusercontent.com/Zeezmann/deskside/main/docs/screenshot-home.jpg">
 <meta name="twitter:card" content="summary_large_image">
@@ -41,6 +41,7 @@
   --red:#b02418; --red-soft:#fee8e5; --red-line:#f7c7c1;
   --blue:#1a4fa8; --blue-soft:#e6edfd; --blue-line:#c5d7f7;
   --teal:#0f766e; --teal-soft:#dbf3f0; --teal-line:#a9ddd8;
+  --plum:#6d28d9; --plum-soft:#f0eafe; --plum-line:#d6c8f8;
   --green:#12703f; --green-soft:#defaea; --green-line:#b1e6c9;
   --shadow:0 1px 2px rgba(19,19,24,.04), 0 8px 24px -14px rgba(19,19,24,.14);
   --shadow-lg:0 2px 6px rgba(19,19,24,.06), 0 26px 52px -22px rgba(19,19,24,.26);
@@ -67,6 +68,7 @@
     --red:#ff9086; --red-soft:#3b1613; --red-line:#66261f;
     --blue:#7fb4f5; --blue-soft:#101f38; --blue-line:#1e3a5c;
     --teal:#5ad6c8; --teal-soft:#0a2b28; --teal-line:#14504a;
+    --plum:#bda4fb; --plum-soft:#1e1436; --plum-line:#3b2d5f;
     --green:#5fd99b; --green-soft:#0b2d1e; --green-line:#175033;
     --shadow:0 1px 2px rgba(0,0,0,.5), 0 8px 24px -12px rgba(0,0,0,.7);
     --shadow-lg:0 2px 6px rgba(0,0,0,.55), 0 28px 56px -24px rgba(0,0,0,.85);
@@ -87,6 +89,7 @@
   --red:#ff9086; --red-soft:#3b1613; --red-line:#66261f;
   --blue:#7fb4f5; --blue-soft:#101f38; --blue-line:#1e3a5c;
   --teal:#5ad6c8; --teal-soft:#0a2b28; --teal-line:#14504a;
+  --plum:#bda4fb; --plum-soft:#1e1436; --plum-line:#3b2d5f;
   --green:#5fd99b; --green-soft:#0b2d1e; --green-line:#175033;
   --shadow:0 1px 2px rgba(0,0,0,.5), 0 8px 24px -12px rgba(0,0,0,.7);
   --shadow-lg:0 2px 6px rgba(0,0,0,.55), 0 28px 56px -24px rgba(0,0,0,.85);
@@ -305,6 +308,7 @@ main{padding:26px 26px 90px;min-width:0;max-width:1080px}
 .b-remote{background:var(--teal-soft);color:var(--teal);border-color:var(--teal-line)}
 .b-net{background:var(--green-soft);color:var(--green);border-color:var(--green-line)}
 .b-mac{background:var(--teal-soft);color:var(--teal);border-color:var(--teal-line)}
+.b-linux{background:var(--plum-soft);color:var(--plum);border-color:var(--plum-line)}
 .b-sys{background:var(--surface2);color:var(--ink2);border-color:var(--accent)}
 .b-mod{background:var(--surface2);color:var(--ink2);border-color:var(--teal)}
 .legend{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:12px}
@@ -660,6 +664,7 @@ textarea#notes:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accen
         <span class="fill" data-fill="USER"><label for="v_USER">User</label><input id="v_USER" data-var="USER" spellcheck="false"></span>
         <span class="fill" data-fill="PROCESS"><label for="v_PROCESS">Process</label><input id="v_PROCESS" data-var="PROCESS" spellcheck="false"></span>
         <span class="fill" data-fill="APP"><label for="v_APP">App</label><input id="v_APP" data-var="APP" spellcheck="false"></span>
+        <span class="fill" data-fill="SERVICE"><label for="v_SERVICE">Service</label><input id="v_SERVICE" data-var="SERVICE" spellcheck="false"></span>
         <span class="fill w" data-fill="FILE"><label for="v_FILE">File</label><input id="v_FILE" data-var="FILE" spellcheck="false"></span>
         <span class="fill w" data-fill="SYS"><label for="v_SYS">Sysinternals</label><input id="v_SYS" data-var="SYS" spellcheck="false"></span>
       </div>
@@ -697,7 +702,7 @@ textarea#notes:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accen
 
 const DEFAULTS = {
   COMPUTER:'PC-NAME', IP:'203.0.113.10', USER:'jsmith', PROCESS:'wermgr',
-  APP:'Chrome', FILE:'C:\\Users\\Public\\Downloads\\file.exe',
+  APP:'Chrome', FILE:'C:\\Users\\Public\\Downloads\\file.exe', SERVICE:'nginx',
   // Where the Sysinternals Suite lives. Put it on the share next to this file
   // and change this once; every Sysinternals script below picks it up.
   SYS:'C:\\Tools\\Sysinternals'
@@ -707,6 +712,7 @@ const CATS = [
   {id:'info',     name:'System info'},
   {id:'software', name:'Software installs & updates'},
   {id:'mac',      name:'macOS'},
+  {id:'linux',    name:'Linux'},
   {id:'network',  name:'Network & VPN'},
   {id:'cloud',    name:'Chat, calls & sync'},
   {id:'ms365',    name:'Microsoft 365', stack:'microsoft'},
@@ -2200,6 +2206,661 @@ Get-WinEvent -FilterHashtable @{ LogName='Application'; Id=1000; StartTime=(Get-
 /* ============================================================
    GUIDES   —   [[script-id]] becomes a clickable chip
    ============================================================ */
+/* ============================================================================
+   LINUX
+
+   Written for the machine you have just been given a shell on and know nothing
+   about. Where a command forks between distribution families the script works
+   out which one it is looking at rather than assuming, because a script that
+   assumes wrong fails in a way that looks like the machine is broken.
+
+   Nothing here uses a dollar sign followed by a brace: the browser reads that
+   as its own substitution and it breaks the file. Plain $var throughout,
+   and $( ) for command substitution, which is safe.
+   ============================================================================ */
+
+S('lx-snapshot','linux','What is this box',['linux'],
+'Run this first on any machine you have just connected to. Distribution and version, kernel, whether it is a virtual machine and on what, uptime, and how much of it is in use. Everything else you do depends on these answers, and it takes two seconds.',
+String.raw`
+echo "--- identity ---"
+hostnamectl 2>/dev/null || { uname -a; cat /etc/os-release | grep -E '^(NAME|VERSION)='; }
+echo
+echo "--- uptime and load ---"
+uptime
+echo "cores: $(nproc)"
+echo
+echo "--- memory ---"
+free -h
+echo
+echo "--- root filesystem ---"
+df -hT / | tail -n +1
+echo
+echo "--- virtualisation ---"
+systemd-detect-virt 2>/dev/null || echo "systemd-detect-virt not available"`);
+
+S('lx-load','linux','Is it actually busy, or just slow',['linux'],
+'Load average only means something next to the core count: a load of 8 is idle on a 32-core box and on fire on a 2-core one. This prints both, then the run queue and the iowait, which is what tells you whether it is stuck on CPU or stuck on disk.',
+String.raw`
+cores=$(nproc)
+echo "cores: $cores"
+echo "load : $(cut -d' ' -f1-3 /proc/loadavg)"
+echo
+awk -v c="$cores" '{ printf "1-minute load per core: %.2f\n", $1 / c }' /proc/loadavg
+echo "Above 1.00 per core means work is queueing. Above 2.00 it is struggling."
+echo
+echo "--- where the time goes (2 samples) ---"
+if command -v vmstat >/dev/null 2>&1; then
+  vmstat 1 2 | tail -2
+  echo "Columns to read: r = waiting to run, b = blocked on I/O, wa = % time waiting on disk."
+else
+  top -b -n 1 | head -5
+fi`);
+
+S('lx-top-cpu','linux','Top processes by CPU',['linux'],
+'The ten processes using the most CPU right now, with their full command line so you can tell which of six java processes it actually is. A single process pinned at 100% of one core looks very different to everything using a little.',
+String.raw`
+ps -eo pid,ppid,user,pcpu,pmem,etime,args --sort=-pcpu | head -11`);
+
+S('lx-top-mem','linux','Top processes by memory',['linux'],
+'The ten hungriest processes by resident memory. RSS is what is actually in RAM, which is the number that matters, not the virtual size.',
+String.raw`
+ps -eo pid,user,pmem,rss,etime,args --sort=-rss | head -11 |
+  awk 'NR==1 { print; next } { $4 = sprintf("%.0fMB", $4/1024); print }' | column -t`);
+
+S('lx-memory','linux','Memory, swap and whether the kernel has been killing things',['linux'],
+'Free memory on Linux is misleading by design: the kernel uses everything spare for cache and gives it back on demand. <b>available</b> is the number to read, not <b>free</b>. This also checks whether the OOM killer has been at work, which is the answer to a surprising number of "the application keeps disappearing" tickets.',
+String.raw`
+free -h
+echo
+echo "--- swap in use by process (top 10) ---"
+for f in /proc/*/status; do
+  awk '/^Name:/ { n=$2 } /^VmSwap:/ { if ($2 > 0) printf "%8d kB  %s\n", $2, n }' "$f" 2>/dev/null
+done | sort -rn | head -10
+echo
+echo "--- has the OOM killer run? ---"
+if journalctl -k --no-pager 2>/dev/null | grep -i "out of memory" | tail -5; then :; fi
+dmesg 2>/dev/null | grep -i "killed process" | tail -5
+echo "(nothing above means it has not, at least not within the log retained)"`);
+
+S('lx-disk','linux','Disk space, including the one everybody forgets',['linux','net'],
+'df for the real filesystems, with tmpfs and squashfs filtered out so you can see what matters. Then <b>inode</b> usage, which is the one people miss: a filesystem can be 4% full and still refuse to write because it has run out of inodes, usually from millions of tiny session or cache files.',
+String.raw`
+echo "--- space ---"
+df -hT -x tmpfs -x devtmpfs -x squashfs -x overlay
+echo
+echo "--- inodes ---"
+df -i -x tmpfs -x devtmpfs -x squashfs -x overlay
+echo
+echo "If IUse% is high but Use% is not, you are out of inodes, not out of space."
+echo "That is almost always millions of small files in one directory - look at"
+echo "session, cache and mail spool directories first."`);
+
+S('lx-big','linux','What is eating the disk',['linux'],
+'Walks down from the root of the full filesystem showing the biggest directory at each level, which finds the culprit far faster than du on everything. Change the starting path if the full filesystem is not /.',
+String.raw`
+target=/
+echo "Largest directories under $target"
+du -xh --max-depth=1 "$target" 2>/dev/null | sort -rh | head -15
+echo
+echo "--- largest individual files under $target (top 15) ---"
+find "$target" -xdev -type f -printf '%s %p\n' 2>/dev/null |
+  sort -rn | head -15 |
+  awk '{ printf "%8.1f MB  %s\n", $1/1048576, $2 }'`);
+
+S('lx-deleted','linux','df says full, du says it is not',['linux'],
+'The classic. A process still holds a file open that has been deleted, so the space is not returned until that process closes it or restarts. du cannot see it because the filename is gone; df can, because the blocks are still allocated. This lists them and names the process to restart.',
+String.raw`
+if ! command -v lsof >/dev/null 2>&1; then
+  echo "lsof is not installed. Install it, or use the /proc walk below."
+  for p in /proc/[0-9]*; do
+    for fd in "$p"/fd/*; do
+      readlink "$fd" 2>/dev/null | grep -q '(deleted)' && echo "$p $(readlink "$fd")"
+    done
+  done 2>/dev/null | head -20
+else
+  echo "Deleted files still held open, largest first:"
+  lsof -nP 2>/dev/null | awk '/deleted/ { printf "%10.1f MB  pid %-8s %-16s %s\n", $7/1048576, $2, $1, $9 }' |
+    sort -rn | head -20
+fi
+echo
+echo "Restart the process that holds it and the space comes back immediately."
+echo "Nothing needs deleting, and rebooting is not the fix, it is the workaround."`);
+
+S('lx-journal-size','linux','The journal has eaten the disk',['linux','admin','changes'],
+'The systemd journal grows until it hits a limit that is often larger than anyone intended. Shows what it is using, then trims it. <b>Read the second command before running it</b> - it permanently discards log history, so make sure nobody needs it for an investigation first.',
+String.raw`
+journalctl --disk-usage
+echo
+echo "To keep only the last 7 days, run:"
+echo "  sudo journalctl --vacuum-time=7d"
+echo
+echo "To cap it at 500MB instead, run:"
+echo "  sudo journalctl --vacuum-size=500M"
+echo
+echo "To make it permanent, set SystemMaxUse in /etc/systemd/journald.conf"
+echo "and run: sudo systemctl restart systemd-journald"`);
+
+S('lx-mounts','linux','Mounts, disks and anything in fstab that is not mounted',['linux'],
+'The whole storage picture: block devices, what is mounted where, and a check for entries in fstab that are not currently mounted - which is why a machine came back from a reboot with a missing directory.',
+String.raw`
+echo "--- block devices ---"
+lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT,LABEL 2>/dev/null || lsblk
+echo
+echo "--- mounted, real filesystems only ---"
+findmnt -t nosquashfs,notmpfs,nodevtmpfs 2>/dev/null || mount | grep -v -E 'tmpfs|cgroup|proc|sysfs'
+echo
+echo "--- in fstab but not mounted ---"
+awk '$1 !~ /^#/ && $2 ~ /^\// { print $2 }' /etc/fstab 2>/dev/null | while read -r m; do
+  mountpoint -q "$m" 2>/dev/null || echo "NOT MOUNTED: $m"
+done
+echo "(nothing listed means everything in fstab is mounted)"`);
+
+S('lx-failed','linux','What is broken right now',['linux'],
+'Start every "the server is not working" ticket here. Lists every systemd unit in a failed state, then the ones currently trying and failing to start. If this is empty, the problem is inside an application rather than a service that will not run.',
+String.raw`
+echo "--- failed units ---"
+systemctl --failed --no-pager
+echo
+echo "--- units in an activating or deactivating state ---"
+systemctl list-units --state=activating,deactivating --no-pager 2>/dev/null
+echo
+echo "--- degraded? ---"
+systemctl is-system-running`);
+
+S('lx-service','linux','Is {{SERVICE}} running, and since when',['linux'],
+'Status, whether it starts at boot, how long it has been up and the last few log lines, in one go. The "since" is often the whole answer: a service that restarted four minutes ago when the user says it broke an hour ago is not your problem.',
+String.raw`
+svc="{{SERVICE}}"
+systemctl status "$svc" --no-pager -l
+echo
+echo "--- starts at boot? ---"
+systemctl is-enabled "$svc" 2>/dev/null
+echo
+echo "--- how many times has it restarted ---"
+systemctl show "$svc" -p NRestarts --value 2>/dev/null`);
+
+S('lx-service-logs','linux','Why did {{SERVICE}} fail',['linux'],
+'The logs for one unit since the last boot, errors only, newest last. This is where the actual reason lives - systemctl status shows you three lines and the reason is usually the fourth.',
+String.raw`
+svc="{{SERVICE}}"
+echo "--- errors since boot ---"
+journalctl -u "$svc" -b -p err --no-pager | tail -40
+echo
+echo "--- everything, last 60 lines ---"
+journalctl -u "$svc" -b --no-pager | tail -60
+echo
+echo "To watch it while you reproduce the fault:  journalctl -u $svc -f"`);
+
+S('lx-service-restart','linux','Restart {{SERVICE}}',['linux','admin','changes','risk'],
+'Restarts one unit and shows what it looks like afterwards. <b>This interrupts whatever the service is doing</b>, including other people connected to it, so say so first. Try <span class="mono">reload</span> instead if the service supports it and you are only changing config.',
+String.raw`
+svc="{{SERVICE}}"
+echo "Before:"
+systemctl is-active "$svc"
+sudo systemctl restart "$svc"
+sleep 2
+echo "After:"
+systemctl is-active "$svc"
+systemctl status "$svc" --no-pager -l | head -15
+echo
+echo "If it failed, the reason is in: journalctl -u $svc -b -p err"`);
+
+S('lx-journal-errors','linux','Every error since this boot',['linux'],
+'The whole system journal filtered to errors and worse, since the machine last started. Long output is normal; read it from the bottom, because the newest is usually the one that matters and the older ones are often consequences of it.',
+String.raw`
+journalctl -p err -b --no-pager | tail -60
+echo
+echo "--- count by unit, so you can see what is noisy ---"
+journalctl -p err -b --no-pager -o json 2>/dev/null |
+  grep -o '"_SYSTEMD_UNIT":"[^"]*"' | cut -d'"' -f4 | sort | uniq -c | sort -rn | head -10`);
+
+S('lx-dmesg','linux','Hardware and kernel complaints',['linux'],
+'The kernel ring buffer with human-readable timestamps, warnings and worse. This is where disk errors, out-of-memory kills, network interface resets and failing hardware show up before anything else notices.',
+String.raw`
+dmesg -T --level=err,warn 2>/dev/null | tail -40 ||
+  sudo dmesg -T --level=err,warn | tail -40
+echo
+echo "--- anything mentioning I/O errors, which usually means a failing disk ---"
+dmesg -T 2>/dev/null | grep -iE "i/o error|ata.*failed|medium error|smart" | tail -10
+echo "(nothing above is good news)"`);
+
+S('lx-ip','linux','Addresses, routes and default gateway',['linux'],
+'The three things a networking problem always comes down to: does the interface have an address, is there a default route, and does it point somewhere sensible. ifconfig has been deprecated for years - ip is what is actually there.',
+String.raw`
+echo "--- interfaces with addresses ---"
+ip -brief address
+echo
+echo "--- routing table ---"
+ip route
+echo
+echo "--- default gateway ---"
+ip route | awk '/^default/ { print "via " $3 " on " $5 }' || echo "NO DEFAULT ROUTE - that is your problem"
+echo
+echo "--- link state ---"
+ip -brief link`);
+
+S('lx-dns','linux','What is this machine using for DNS',['linux'],
+'Where DNS actually comes from, which on a modern distribution is systemd-resolved rather than the /etc/resolv.conf everyone still looks at - that file is frequently a symlink to a stub that says 127.0.0.53 and tells you nothing.',
+String.raw`
+if command -v resolvectl >/dev/null 2>&1; then
+  echo "--- systemd-resolved ---"
+  resolvectl status | grep -E "Current DNS|DNS Servers|DNS Domain|Link " | head -20
+  echo
+  echo "--- test ---"
+  resolvectl query google.com 2>&1 | head -5
+else
+  echo "--- resolv.conf ---"
+  cat /etc/resolv.conf | grep -v '^#'
+  echo
+  command -v dig >/dev/null 2>&1 && dig +short google.com || getent hosts google.com
+fi
+echo
+echo "If /etc/resolv.conf says 127.0.0.53 that is the resolved stub, not the real server."`);
+
+S('lx-dns-flush','linux','Flush the DNS cache',['linux','admin','changes'],
+'After a DNS record has been changed and the machine is still using the old answer. Harmless, and it only affects this machine.',
+String.raw`
+if command -v resolvectl >/dev/null 2>&1; then
+  sudo resolvectl flush-caches && echo "systemd-resolved cache flushed"
+  resolvectl statistics 2>/dev/null | head -8
+elif systemctl is-active nscd >/dev/null 2>&1; then
+  sudo systemctl restart nscd && echo "nscd restarted"
+elif systemctl is-active dnsmasq >/dev/null 2>&1; then
+  sudo systemctl restart dnsmasq && echo "dnsmasq restarted"
+else
+  echo "No local DNS cache found. This machine asks the server every time,"
+  echo "so there is nothing to flush and the stale answer is upstream."
+fi`);
+
+S('lx-listening','linux','What is listening, and what put it there',['linux','admin'],
+'Every listening socket with the process behind it. Needs sudo to show process names for anything not yours. This answers both "is the service actually up" and "what on earth is that".',
+String.raw`
+sudo ss -tulpn 2>/dev/null || ss -tuln
+echo
+echo "--- listening on all interfaces rather than localhost ---"
+sudo ss -tulpn 2>/dev/null | awk '$5 ~ /^(0\.0\.0\.0|\*|\[::\]):/ { print }'
+echo "Anything above is reachable from the network. Make sure it is meant to be."`);
+
+S('lx-conn','linux','Can this box reach {{IP}}',['linux','net'],
+'Works down the layers in order rather than guessing: name resolution, route, ICMP, then the actual TCP port. Each step tells you something different, and the first one that fails is where the problem is.',
+String.raw`
+target="{{IP}}"
+port=443
+echo "--- 1. does the name resolve (skip if it is already an address) ---"
+getent hosts "$target" || echo "no DNS answer"
+echo
+echo "--- 2. which route would it take ---"
+ip route get "$target" 2>/dev/null || echo "no route to host"
+echo
+echo "--- 3. does it answer a ping (many hosts block this, so a failure here proves little) ---"
+ping -c 2 -W 2 "$target" 2>&1 | tail -3
+echo
+echo "--- 4. is the port actually open ---"
+if command -v nc >/dev/null 2>&1; then
+  nc -z -w 3 "$target" "$port" && echo "port $port OPEN" || echo "port $port closed or filtered"
+else
+  timeout 3 bash -c "cat < /dev/null > /dev/tcp/$target/$port" 2>/dev/null \
+    && echo "port $port OPEN" || echo "port $port closed or filtered"
+fi`);
+
+S('lx-firewall','linux','Which firewall is running, and what does it allow',['linux','admin'],
+'There are four common answers and most machines have more than one installed while only one is doing anything. This finds the one that is actually in charge and prints its rules.',
+String.raw`
+found=0
+if command -v ufw >/dev/null 2>&1 && sudo ufw status 2>/dev/null | grep -q "Status: active"; then
+  echo "=== ufw is active ==="; sudo ufw status verbose; found=1
+fi
+if systemctl is-active firewalld >/dev/null 2>&1; then
+  echo "=== firewalld is active ==="
+  sudo firewall-cmd --list-all; found=1
+fi
+if command -v nft >/dev/null 2>&1 && sudo nft list ruleset 2>/dev/null | grep -q .; then
+  echo "=== nftables has rules ==="; sudo nft list ruleset | head -40; found=1
+fi
+if [ "$found" -eq 0 ]; then
+  echo "No active ufw, firewalld or nftables ruleset. Checking iptables directly:"
+  sudo iptables -L -n -v --line-numbers 2>/dev/null | head -40
+fi
+echo
+echo "Remember the host firewall is only one of three places traffic can be dropped."
+echo "The others are a security group or network ACL in front of it, and the"
+echo "service itself only binding to 127.0.0.1."`);
+
+S('lx-netmanager','linux','Who is managing the network on this box',['linux'],
+'NetworkManager, netplan, systemd-networkd or old-style interfaces files - servers and desktops usually differ, and editing the wrong one changes nothing at all. This tells you which is in charge before you touch anything.',
+String.raw`
+echo "--- NetworkManager ---"
+systemctl is-active NetworkManager 2>/dev/null || echo "not running"
+command -v nmcli >/dev/null 2>&1 && nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device 2>/dev/null
+echo
+echo "--- systemd-networkd ---"
+systemctl is-active systemd-networkd 2>/dev/null || echo "not running"
+command -v networkctl >/dev/null 2>&1 && networkctl list 2>/dev/null
+echo
+echo "--- netplan config (Ubuntu) ---"
+ls -1 /etc/netplan/*.yaml 2>/dev/null || echo "none"
+echo
+echo "--- legacy interfaces file ---"
+[ -f /etc/network/interfaces ] && echo "/etc/network/interfaces exists" || echo "none"
+echo
+echo "Edit whichever of these is actually active. Changing the others does nothing."`);
+
+S('lx-whoami','linux','Who am I and what can I do here',['linux'],
+'Your identity, your groups and exactly which commands you may run with sudo. Run it before you start, not after something is refused - "permission denied" on a command you assumed you had is a slow way to find out.',
+String.raw`
+id
+echo
+echo "--- groups ---"
+groups
+echo
+echo "--- what sudo will let me do ---"
+sudo -l 2>&1 | tail -20
+echo
+echo "--- am I in a container? ---"
+systemd-detect-virt --container 2>/dev/null || echo "not a container, or cannot tell"`);
+
+S('lx-user','linux','Everything about {{USER}}',['linux'],
+'Account details, group memberships, whether the account or password is locked or expired, shell, home directory and when they last logged in. The whole picture for a "cannot log in" ticket in one place.',
+String.raw`
+u="{{USER}}"
+echo "--- account ---"
+getent passwd "$u" || { echo "No such user on this machine."; exit 1; }
+echo
+echo "--- groups ---"
+id "$u"
+echo
+echo "--- password and account state ---"
+sudo passwd -S "$u" 2>/dev/null || echo "(needs sudo)"
+sudo chage -l "$u" 2>/dev/null || echo "(needs sudo)"
+echo
+echo "--- recent logins ---"
+last -n 10 "$u" 2>/dev/null
+echo
+echo "--- failed attempts ---"
+sudo faillock --user "$u" 2>/dev/null || sudo pam_tally2 -u "$u" 2>/dev/null || echo "(no faillock or pam_tally2)"
+echo
+echo "In passwd -S: L means locked, P means a usable password, NP means no password at all."`);
+
+S('lx-authfail','linux','Who has been failing to log in',['linux','admin'],
+'Failed SSH and sudo attempts. Read it for two different reasons: a user who cannot get in, and a machine being brute-forced. On an internet-facing box the second is constant and normal, which is itself worth knowing.',
+String.raw`
+echo "--- failed SSH, most recent last ---"
+if journalctl -u ssh -u sshd --no-pager -b 2>/dev/null | grep -qi "failed"; then
+  journalctl -u ssh -u sshd --no-pager -b | grep -i "failed password\|invalid user" | tail -25
+elif [ -f /var/log/auth.log ]; then
+  sudo grep -i "failed password\|invalid user" /var/log/auth.log | tail -25
+elif [ -f /var/log/secure ]; then
+  sudo grep -i "failed password\|invalid user" /var/log/secure | tail -25
+fi
+echo
+echo "--- top source addresses ---"
+{ journalctl -u ssh -u sshd --no-pager -b 2>/dev/null; sudo cat /var/log/auth.log /var/log/secure 2>/dev/null; } |
+  grep -oE "from [0-9]{1,3}(\.[0-9]{1,3}){3}" | awk '{print $2}' | sort | uniq -c | sort -rn | head -10
+echo
+echo "--- failed sudo ---"
+{ journalctl --no-pager -b 2>/dev/null; sudo cat /var/log/auth.log /var/log/secure 2>/dev/null; } |
+  grep -i "sudo.*authentication failure\|NOT in the sudoers" | tail -10`);
+
+S('lx-sudoers','linux','Who can become root here',['linux','admin'],
+'Everyone with administrative rights, from the sudo and wheel groups and from the sudoers files. Worth running on any machine you inherit, and it is the Linux half of a leaver check.',
+String.raw`
+echo "--- members of sudo / wheel / admin ---"
+for g in sudo wheel admin; do
+  getent group "$g" 2>/dev/null | awk -F: -v g="$g" '{ if ($4 != "") print g ": " $4 }'
+done
+echo
+echo "--- rules in sudoers and sudoers.d ---"
+sudo grep -rhE "^[^#]*ALL" /etc/sudoers /etc/sudoers.d/ 2>/dev/null | grep -v '^Defaults' | sed 's/^/  /'
+echo
+echo "--- accounts with UID 0 (there should be exactly one: root) ---"
+awk -F: '$3 == 0 { print $1 }' /etc/passwd
+echo
+echo "--- NOPASSWD rules, which are the ones worth questioning ---"
+sudo grep -rh "NOPASSWD" /etc/sudoers /etc/sudoers.d/ 2>/dev/null | sed 's/^/  /' || echo "  none"`);
+
+S('lx-sshkeys','linux','Which SSH keys can get into this box',['linux','admin'],
+'Every authorized_keys file on the machine with the key comments, which are usually the only clue about whose key it is. A departed colleague’s key sitting in root’s authorized_keys is a common and quiet finding.',
+String.raw`
+echo "--- authorized_keys by user ---"
+for home in /root /home/*; do
+  f="$home/.ssh/authorized_keys"
+  [ -f "$f" ] || continue
+  echo "== $f =="
+  sudo awk '!/^#/ && NF { print "   " $1 "  ..." substr($2, length($2)-12) "  " $3 }' "$f" 2>/dev/null
+done
+echo
+echo "--- does the server even allow password logins ---"
+sudo sshd -T 2>/dev/null | grep -E "^(passwordauthentication|permitrootlogin|pubkeyauthentication)" ||
+  grep -iE "^(PasswordAuthentication|PermitRootLogin)" /etc/ssh/sshd_config 2>/dev/null`);
+
+S('lx-leaver','linux','Disable an account without deleting it',['linux','admin','changes','risk'],
+'The right way to offboard on a Linux box. Locks the password, expires the account, removes their keys and ends any session they have open - but leaves the files and the UID alone, because deleting a user orphans everything they own and you cannot undo it. <b>Read every line before you run it.</b>',
+String.raw`
+u="{{USER}}"
+echo "This will disable $u. Review each command before running it."
+echo
+echo "# 1. Lock the password and expire the account"
+echo "sudo usermod --lock --expiredate 1 $u"
+echo
+echo "# 2. Stop them using a shell"
+echo "sudo usermod --shell /usr/sbin/nologin $u"
+echo
+echo "# 3. Remove their SSH keys, keeping a copy first"
+echo "sudo cp /home/$u/.ssh/authorized_keys /root/$u-authorized_keys.bak"
+echo "sudo truncate -s 0 /home/$u/.ssh/authorized_keys"
+echo
+echo "# 4. End any session they have open right now"
+echo "sudo pkill -KILL -u $u"
+echo
+echo "# 5. Check what they own before anybody talks about deleting the account"
+echo "sudo find / -xdev -user $u -printf '%p\n' 2>/dev/null | head -50"
+echo
+echo "Deleting the user is a separate decision made later. A UID gets reused,"
+echo "and then the next person to hold it owns all of their old files."`);
+
+S('lx-perms','linux','Why can nobody read {{FILE}}',['linux'],
+'Ownership and mode of the file and of every directory above it, because a perfectly readable file inside a directory without execute permission is unreachable. That is the answer far more often than the file itself.',
+String.raw`
+f="{{FILE}}"
+echo "--- the file ---"
+ls -l "$f" 2>/dev/null || echo "does not exist, or you cannot see the directory it is in"
+echo
+echo "--- the whole path down to it ---"
+namei -l "$f" 2>/dev/null || {
+  p="$f"
+  while [ "$p" != "/" ]; do ls -ld "$p" 2>/dev/null; p=$(dirname "$p"); done
+}
+echo
+echo "--- extended attributes and ACLs ---"
+lsattr "$f" 2>/dev/null
+getfacl "$f" 2>/dev/null | grep -v '^#'
+echo
+echo "--- SELinux or AppArmor, which deny things that look permitted ---"
+command -v getenforce >/dev/null 2>&1 && echo "SELinux: $(getenforce)"
+command -v aa-status >/dev/null 2>&1 && sudo aa-status --enabled 2>/dev/null && echo "AppArmor: enabled"
+echo
+echo "A directory needs x, not r, for anything inside it to be reachable."`);
+
+S('lx-updates','linux','What updates are waiting',['linux','net','admin'],
+'Pending updates, and separately which of them are security updates, on either family. Read-only - it lists, it does not install.',
+String.raw`
+if command -v apt-get >/dev/null 2>&1; then
+  echo "=== Debian / Ubuntu ==="
+  sudo apt-get update -qq
+  apt list --upgradable 2>/dev/null | tail -n +2
+  echo
+  echo "--- security updates among them ---"
+  apt list --upgradable 2>/dev/null | grep -i security | wc -l
+  echo
+  [ -f /var/run/reboot-required ] && cat /var/run/reboot-required || echo "No reboot flagged."
+elif command -v dnf >/dev/null 2>&1; then
+  echo "=== RHEL family ==="
+  sudo dnf check-update 2>/dev/null | tail -n +3
+  echo
+  echo "--- security updates among them ---"
+  sudo dnf updateinfo list security 2>/dev/null | tail -20
+  echo
+  command -v needs-restarting >/dev/null 2>&1 && sudo needs-restarting -r
+else
+  echo "Neither apt nor dnf found. Check zypper, pacman or apk by hand."
+fi`);
+
+S('lx-pkg','linux','Find and install a package on either family',['linux','net','admin','changes'],
+'Works out which package manager is present and searches for whatever you put in the App box, then shows you the install command rather than running it. Installing software on somebody else’s server is a decision, not a step.',
+String.raw`
+pkg="{{APP}}"
+if command -v apt-get >/dev/null 2>&1; then
+  echo "=== apt ==="
+  apt-cache search "$pkg" | head -10
+  echo
+  echo "Installed version, if any:"
+  dpkg -l "$pkg" 2>/dev/null | tail -1
+  echo
+  echo "To install:  sudo apt-get install -y $pkg"
+elif command -v dnf >/dev/null 2>&1; then
+  echo "=== dnf ==="
+  dnf search "$pkg" 2>/dev/null | head -10
+  echo
+  echo "Installed version, if any:"
+  rpm -q "$pkg" 2>/dev/null
+  echo
+  echo "To install:  sudo dnf install -y $pkg"
+else
+  echo "Neither apt nor dnf. Try: zypper se $pkg   or   pacman -Ss $pkg"
+fi`);
+
+S('lx-whichpkg','linux','Which package put this file here',['linux'],
+'Traces a file back to the package that installed it, which tells you what to reinstall when a binary has gone missing or been modified, and who to blame when something appeared that nobody remembers installing.',
+String.raw`
+f="{{FILE}}"
+if command -v dpkg >/dev/null 2>&1; then
+  dpkg -S "$f" 2>/dev/null || echo "Not owned by any package - installed by hand, or from a tarball."
+  echo
+  p=$(dpkg -S "$f" 2>/dev/null | cut -d: -f1)
+  [ -n "$p" ] && echo "Reinstall with:  sudo apt-get install --reinstall $p"
+elif command -v rpm >/dev/null 2>&1; then
+  rpm -qf "$f" 2>/dev/null || echo "Not owned by any package."
+  echo
+  p=$(rpm -qf --qf '%{NAME}' "$f" 2>/dev/null)
+  [ -n "$p" ] && echo "Reinstall with:  sudo dnf reinstall $p"
+else
+  echo "No dpkg or rpm on this machine."
+fi`);
+
+S('lx-reboot','linux','Does it need a reboot, and why',['linux'],
+'Whether a restart is actually pending, and which running processes are still using libraries that have since been replaced - which is the real reason a patched machine is still vulnerable until it is restarted.',
+String.raw`
+echo "--- flagged? ---"
+if [ -f /var/run/reboot-required ]; then
+  cat /var/run/reboot-required
+  cat /var/run/reboot-required.pkgs 2>/dev/null | sed 's/^/  /'
+elif command -v needs-restarting >/dev/null 2>&1; then
+  sudo needs-restarting -r
+else
+  echo "No reboot flag found."
+fi
+echo
+echo "--- running kernel vs newest installed ---"
+echo "running: $(uname -r)"
+ls -1 /boot/vmlinuz-* 2>/dev/null | sed 's|.*/vmlinuz-||' | sort -V | tail -1 | sed 's/^/newest : /'
+echo
+echo "--- processes using deleted libraries ---"
+sudo lsof -nP 2>/dev/null | awk '/DEL.*lib/ { print $1, $2 }' | sort -u | head -15
+echo "(those are still running the old code until they restart)"`);
+
+S('lx-display','linux','Displays, resolution and which graphics stack',['linux'],
+'For a Linux desktop with a monitor problem. Tells you whether the session is Wayland or X11 first, because half the advice on the internet only applies to one of them and it is usually the other one.',
+String.raw`
+echo "session type: $XDG_SESSION_TYPE"
+echo "desktop     : $XDG_CURRENT_DESKTOP"
+echo "(blank above means the variable is not set, which usually means you are"
+echo " on a console or over SSH rather than in a graphical session)"
+echo
+if [ "$XDG_SESSION_TYPE" = "x11" ] && command -v xrandr >/dev/null 2>&1; then
+  xrandr --query | grep -E " connected|^Screen"
+elif command -v wlr-randr >/dev/null 2>&1; then
+  wlr-randr
+else
+  echo "--- connected outputs, from the kernel ---"
+  for c in /sys/class/drm/card*/status; do
+    [ -f "$c" ] && echo "$(basename "$(dirname "$c")"): $(cat "$c")"
+  done
+fi
+echo
+echo "--- graphics hardware and driver ---"
+lspci -k 2>/dev/null | grep -A3 -iE "vga|3d|display" | head -12`);
+
+S('lx-audio','linux','No sound on a Linux desktop',['linux'],
+'Which audio server is running, what it thinks the default output is, and whether anything is muted. PipeWire has replaced PulseAudio on most current distributions, and the commands differ.',
+String.raw`
+echo "--- which audio server ---"
+if command -v wpctl >/dev/null 2>&1 && systemctl --user is-active pipewire >/dev/null 2>&1; then
+  echo "PipeWire"
+  wpctl status | head -30
+  echo
+  echo "default sink volume:"
+  wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null
+elif command -v pactl >/dev/null 2>&1; then
+  echo "PulseAudio"
+  pactl info | grep -E "Server Name|Default Sink"
+  echo
+  pactl list short sinks
+  pactl list sinks | grep -E "Name:|Mute:|Volume:" | head -12
+else
+  echo "Neither wpctl nor pactl. Falling back to ALSA:"
+  aplay -l 2>/dev/null
+  amixer 2>/dev/null | head -20
+fi
+echo
+echo "--- is anything muted ---"
+amixer 2>/dev/null | grep -i "\[off\]" && echo "^ something is muted" || echo "nothing muted at the ALSA level"`);
+
+S('lx-wifi','linux','Wifi on a Linux laptop',['linux','net'],
+'Whether the radio is on, what it is connected to and how good the signal is. Needs NetworkManager, which is on desktops and almost never on servers.',
+String.raw`
+if ! command -v nmcli >/dev/null 2>&1; then
+  echo "nmcli is not here, so NetworkManager is probably not managing this machine."
+  echo "Run the network manager script to find out what is."
+  exit 0
+fi
+echo "--- radio ---"
+nmcli radio
+echo
+echo "--- devices ---"
+nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device | grep wifi
+echo
+echo "--- current connection and signal ---"
+nmcli -f IN-USE,SSID,SIGNAL,RATE,SECURITY device wifi list | head -12
+echo
+echo "To reconnect:      nmcli device disconnect <dev> && nmcli device connect <dev>"
+echo "To join a network: nmcli device wifi connect \"<SSID>\" password \"<password>\""
+echo
+echo "SIGNAL under about 40 is where things start dropping."`);
+
+S('lx-collect','linux','Collect everything into one file for the ticket',['linux'],
+'Runs the read-only checks in one pass and writes them to a file in /tmp with a timestamp. Attach that rather than pasting output a piece at a time - it gives whoever picks the ticket up next the whole picture instead of the one command you happened to run.',
+String.raw`
+out="/tmp/triage-$(hostname -s)-$(date +%Y%m%d-%H%M%S).txt"
+{
+  echo "=== collected $(date) on $(hostname -f 2>/dev/null || hostname) ==="
+  echo
+  echo "### identity"; hostnamectl 2>/dev/null || uname -a
+  echo; echo "### uptime and load"; uptime; echo "cores: $(nproc)"
+  echo; echo "### memory"; free -h
+  echo; echo "### disk"; df -hT -x tmpfs -x devtmpfs -x squashfs
+  echo; echo "### inodes"; df -i -x tmpfs -x devtmpfs -x squashfs
+  echo; echo "### failed units"; systemctl --failed --no-pager
+  echo; echo "### top by cpu"; ps -eo pid,user,pcpu,pmem,args --sort=-pcpu | head -11
+  echo; echo "### top by memory"; ps -eo pid,user,pcpu,pmem,args --sort=-rss | head -11
+  echo; echo "### network"; ip -brief address; echo; ip route
+  echo; echo "### listening"; ss -tuln
+  echo; echo "### recent errors"; journalctl -p err -b --no-pager 2>/dev/null | tail -40
+} > "$out" 2>&1
+echo "Written to: $out"
+ls -lh "$out"
+echo
+echo "Copy it off with:  scp $(whoami)@$(hostname -s):$out ."`);
+
 const GUIDES = [
 {id:'g-software', title:'Software install or update request', sub:'Usually the biggest category of all',
  steps:[
@@ -2502,6 +3163,75 @@ const GUIDES = [
   'Anything with the red Interrupts the user badge needs saying out loud before you run it.',
   'Finish by collecting one file for the ticket rather than pasting output piecemeal. [[collect-report]]',
   'Write up what you did. The Notes tab here is a scratchpad for exactly that.'
+ ]},
+{id:'g-linux', title:'Linux box triage: where to start', sub:'A server is unhappy and you have just been given a shell',
+ steps:[
+  'Find out what you are on before you touch anything. Distribution, kernel, whether it is a VM, how long it has been up. [[lx-snapshot]]',
+  'Ask what "slow" or "broken" means to whoever raised it, and when it started. A machine that has been up 400 days and a machine restarted an hour ago are different problems.',
+  'Is it actually busy? Load only means something next to the core count, and high iowait means disk, not CPU. [[lx-load]]',
+  'Find the processes responsible, by CPU and by memory. [[lx-top-cpu]] [[lx-top-mem]]',
+  'Check memory properly. Read <i>available</i>, not <i>free</i> - Linux uses spare RAM for cache by design. Then check whether the kernel has been killing things, which explains a lot of "the application keeps disappearing". [[lx-memory]]',
+  'Check whether anything is in a failed state. If this is empty, the problem is inside an application rather than a service that will not run. [[lx-failed]]',
+  'Read the errors since boot. From the bottom - the newest is usually the cause and the older ones are its consequences. [[lx-journal-errors]]',
+  'Check the kernel ring buffer for hardware complaints. Disk I/O errors show up here long before anything else notices. [[lx-dmesg]]',
+  'If it looks patched but still misbehaving, find out whether it is waiting on a reboot and which processes are still running old code. [[lx-reboot]] [[lx-updates]]',
+  'Before you hand it on, collect everything into one file and attach that to the ticket. [[lx-collect]]'
+ ]},
+{id:'g-linux-disk', title:'Disk full on Linux', sub:'No space left on device, or a filesystem that will not write',
+ steps:[
+  'Check space and <b>inodes</b> together. A filesystem can be 4% full and still refuse to write because it has run out of inodes. [[lx-disk]]',
+  'If inode usage is the high one, you are looking for millions of small files rather than a few big ones. Session directories, cache directories and mail spools first.',
+  'Find what is actually using the space, walking down a level at a time rather than du-ing the whole disk. [[lx-big]]',
+  'If df says full and du says it is not, a process is still holding a deleted file open. Restart that process and the space comes straight back - do not reboot, and do not go looking for files to delete. [[lx-deleted]]',
+  'Check the journal. It grows to a limit that is usually larger than anyone intended. [[lx-journal-size]]',
+  'Check whether the filesystem you expected is even mounted. A missing mount means writes went to the root disk instead. [[lx-mounts]]',
+  'Only once you know what filled it: agree what to remove with whoever owns the machine. Deleting logs during an incident destroys the evidence for the investigation afterwards.'
+ ]},
+{id:'g-linux-service', title:'A service will not start', sub:'systemctl says failed, or it starts and dies immediately',
+ steps:[
+  'Confirm what is actually failing rather than what was reported. [[lx-failed]]',
+  'Put the unit name in the <b>Service</b> box at the top, then read its state. The "since" line is often the whole answer - a service that restarted four minutes ago when the fault was reported an hour ago is not your problem. [[lx-service]]',
+  'Read its logs. systemctl status shows three lines and the reason is nearly always the fourth. [[lx-service-logs]]',
+  'The four usual causes, in the order you should check them: something else already on the port, a config file it cannot parse, a file or directory it cannot read, or a dependency that is not up.',
+  'For a port clash, see what already holds it. [[lx-listening]]',
+  'For a permissions problem, check the whole path, not just the file. A readable file inside a directory without execute permission is unreachable, and SELinux or AppArmor will deny things that look perfectly permitted. [[lx-perms]]',
+  'If a binary or config has gone missing, find out which package owns it and reinstall that package rather than copying a file in by hand. [[lx-whichpkg]] [[lx-pkg]]',
+  'Once you have changed something, restart it and watch. Tell the user first - this interrupts anyone connected. [[lx-service-restart]]',
+  'Still failing: run it in the foreground by hand as the same user the unit runs as. Services frequently say more on a terminal than they ever write to the journal.'
+ ]},
+{id:'g-linux-net', title:'Linux networking not working', sub:'No connectivity, cannot resolve, or cannot reach one host',
+ steps:[
+  'Work up the layers in order and stop at the first thing that fails. Guessing in the middle wastes the most time.',
+  'Does the interface have an address, and is there a default route? No default route is the whole answer surprisingly often. [[lx-ip]]',
+  'Find out what is managing the network before you change anything. NetworkManager, netplan, systemd-networkd and interfaces files all exist, usually more than one at a time, and editing the inactive one changes nothing at all. [[lx-netmanager]]',
+  'Check DNS properly. /etc/resolv.conf is often a symlink to a stub saying 127.0.0.53, which tells you nothing about the real server. [[lx-dns]]',
+  'If a record was changed recently and the machine is still using the old answer, flush the cache. [[lx-dns-flush]]',
+  'Test reachability to one host, layer by layer: resolve, route, ping, then the actual port. A blocked ping proves very little on its own. [[lx-conn]]',
+  'If the port is closed, check whether the service is listening at all, and whether it is bound to localhost rather than the network. [[lx-listening]]',
+  'Then check the firewall - and find out which of the four is actually in charge first. Remember the host firewall is only one of three places traffic gets dropped; the others are a security group in front of it and the service binding to 127.0.0.1. [[lx-firewall]]',
+  'On a laptop, check the radio and the signal. [[lx-wifi]]'
+ ]},
+{id:'g-linux-access', title:'Cannot log in, or cannot do a thing', sub:'Permission denied, locked account, or sudo refusing',
+ steps:[
+  'First, separate the two cases. "Cannot log in at all" and "logged in but refused" are different problems with different answers.',
+  'If it is your own session that is refusing, check what you actually have before assuming. [[lx-whoami]]',
+  'For a user who cannot get in, put their name in the <b>User</b> box and get the whole picture at once: account state, password state, expiry, shell and last login. In passwd -S, L means locked and NP means no password at all. [[lx-user]]',
+  'Check the failed attempts. This also tells you whether the machine is simply being brute-forced, which on anything internet-facing is constant and normal. [[lx-authfail]]',
+  'A shell set to /usr/sbin/nologin, an expired account, or a home directory that does not exist will all refuse a login while the password is perfectly correct.',
+  'If SSH is refusing a key, check which keys the box actually accepts and whether password login is even permitted. [[lx-sshkeys]]',
+  'For "sudo says I cannot", check who genuinely has administrative rights here. [[lx-sudoers]]',
+  'For a file they cannot read, check the whole path rather than the file. A directory needs execute, not read, for anything inside it to be reachable. [[lx-perms]]',
+  'For a leaver, disable rather than delete, and check what they own before anyone suggests removing the account. A reused UID means the next person inherits all of their files. [[lx-leaver]]'
+ ]},
+{id:'g-linux-desktop', title:'Linux desktop: screen or sound', sub:'A monitor that will not come up, or no audio',
+ steps:[
+  'Find out whether the session is Wayland or X11 first. Half the advice you will find only applies to one of them, and it is usually the other one. [[lx-display]]',
+  'For a display problem: check the output is detected at the kernel level even if the desktop is not using it. A connected output that the session ignores is a driver or compositor problem, not a cable.',
+  'Check the graphics driver actually in use. An NVIDIA card running the nouveau driver instead of the proprietary one explains a great many resolution and multi-monitor complaints.',
+  'For audio: find out whether it is PipeWire or PulseAudio, because the commands differ and PipeWire has replaced PulseAudio on most current distributions. [[lx-audio]]',
+  'Check the obvious thing before anything else: whether the right output device is selected, and whether anything is muted at the ALSA level underneath it all.',
+  'For wifi on a laptop, check the radio, the connection and the signal strength. Below about 40 is where things start dropping. [[lx-wifi]]',
+  'If the desktop session itself is broken rather than one part of it, check the user journal: journalctl --user -b -p err'
  ]}
 ];
 
@@ -3571,7 +4301,10 @@ function utilCleanup(){
      stale, which is why the date it was compiled is shown on screen rather than
      buried in a comment. A support date that is quietly wrong is worse than none. */
 
-  var WINVER_ASOF = '2026-09-25';
+  // The newest release this table covers. It is a statement of coverage, not of
+  // freshness: a build newer than this is simply not in the list, which the
+  // not-found message says plainly. Nothing here needs revisiting on a date.
+  var WINVER_NEWEST = 'Windows 11 25H2';
   var WINVER = [
     // build, name, edition line, released, end of support (Home/Pro), end of support (Ent/Edu)
     [10240, 'Windows 10 1507',  'Windows 10', '2015-07-29', '2017-05-09', '2017-05-09'],
@@ -3626,13 +4359,10 @@ function utilCleanup(){
       '<div class="err" id="wv-err"></div></div>' +
       '<div id="wv-out"></div>'));
 
-    var asofDate = new Date(WINVER_ASOF + 'T00:00:00Z');
-    var ageDays = Math.floor((Date.now() - asofDate) / 86400000);
-    el('wv-asof').innerHTML = 'This table was compiled on <b>' + WINVER_ASOF + '</b>, ' +
-      (ageDays < 1 ? 'today' : ageDays + ' day' + (ageDays === 1 ? '' : 's') + ' ago') + '. ' +
-      (ageDays > 240
-        ? '<b>That is old enough to be wrong.</b> Check learn.microsoft.com/lifecycle before you quote a date to anyone.'
-        : 'Anything released since then will not be in it - check learn.microsoft.com/lifecycle for those.');
+    el('wv-asof').innerHTML = 'Covers Windows 10 and Windows 11 up to <b>' + esc(WINVER_NEWEST) +
+      '</b>, plus the LTSC and Server builds. A newer release will not be in the list and will say so. ' +
+      'Support dates are Microsoft\'s published ones - check learn.microsoft.com/lifecycle before you ' +
+      'quote one to a customer.';
 
     var inp = el('wv-in');
     el('wv-go').onclick = go;
@@ -3675,8 +4405,9 @@ function utilCleanup(){
 
       if (!client && !ltsc.length && !server.length) {
         el('wv-out').innerHTML = '<div class="card"><div class="err">Build ' + build + ' is not in the table.</div>' +
-          '<div class="hint">Either it shipped after ' + WINVER_ASOF + ', or it is an Insider build, or it is a ' +
-          'typo. learn.microsoft.com/windows/release-health has the full list.</div></div>';
+          '<div class="hint">This list stops at ' + esc(WINVER_NEWEST) + ', so either the machine is on ' +
+          'something newer, or it is an Insider build, or it is a typo. ' +
+          'learn.microsoft.com/windows/release-health has the full list.</div></div>';
         return;
       }
 
@@ -3923,6 +4654,7 @@ const BADGE = {
   remote:['Remote','b-remote','Runs against another machine over the network.'],
   net:['Internet','b-net','Needs a connection. Everything without this badge works offline.'],
   mac:['macOS Terminal','b-mac','For Terminal on a Mac, not PowerShell. Command + Space, type Terminal.'],
+  linux:['Linux shell','b-linux','For a Linux shell, not PowerShell. Where commands differ between distributions it works out which one it is on.'],
   sys:['Needs Sysinternals','b-sys','Needs the Sysinternals binaries on disk, with the path set in the box at the top.'],
   mod:['Needs a PowerShell module','b-mod','Installs or imports a PowerShell module before it will run.']
 };
@@ -3934,13 +4666,13 @@ const BADGE = {
 const BRAND = {
   mark: 'DS',                              // two or three characters for the badge
   name: 'Deskside',                        // shown next to it
-  sub:  'Windows and macOS field kit'      // the small line underneath
+  sub:  'Windows, macOS and Linux field kit'   // the small line underneath
 };
-const MAINT = { owner:'Azeez Jimoh', reviewed:'September 2026', next:'March 2027' };
+const MAINT = { owner:'Azeez Jimoh' };
 
 /* The six things people actually open this for, straight on the front page.
    Everything else is one click away in the rail. */
-const TILES = ['g-software','g-slow','g-vpn','g-slack','g-mac','g-suspicious'];
+const TILES = ['g-software','g-slow','g-vpn','g-slack','g-mac','g-linux','g-locked','g-disk','g-suspicious'];
 
 const ICON = {
   home:  '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>',
@@ -3965,6 +4697,7 @@ const ICON = {
   chip:  '<rect x="7" y="7" width="10" height="10" rx="1.6"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"/>',
   sync:  '<path d="M20.5 11a8.5 8.5 0 0 0-14.8-4.6L3 9"/><path d="M3.5 13a8.5 8.5 0 0 0 14.8 4.6L21 15"/><path d="M3 4v5h5M21 20v-5h-5"/>',
   file:  '<path d="M5 3h9l5 5v13H5Z"/><path d="M14 3v5h5"/>',
+  terminal: '<rect x="2.5" y="4" width="19" height="16" rx="2.5"/><path d="m7 9.5 3 2.5-3 2.5M13 15h4"/>',
   wand:  '<path d="m3 21 12-12"/><path d="m14 6 4 4"/><path d="M18 3v4M16 5h4M5 4v3M3.5 5.5h3M19 15v3M17.5 16.5h3"/>',
   mail:  '<rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="m3 6 9 6.5L21 6"/>',
   bug:   '<path d="M8 7a4 4 0 0 1 8 0"/><rect x="7" y="7" width="10" height="11" rx="5"/><path d="M3 11h4M17 11h4M3.5 17h3.5M17 17h3.5M4.5 6l2.5 2M19.5 6 17 8M12 18v3"/>',
@@ -3973,11 +4706,12 @@ const ICON = {
   print: '<path d="M6.5 9V3h11v6"/><rect x="3" y="9" width="18" height="7.5" rx="1.8"/><path d="M6.5 14h11v7h-11Z"/>'
 };
 const CAT_ICON = {
-  info:'info', software:'bolt', mac:'mac', network:'net', cloud:'chat', ms365:'grid',
+  info:'info', software:'bolt', mac:'mac', linux:'terminal', network:'net', cloud:'chat', ms365:'grid',
   security:'shield', sysint:'tool', perf:'slow', accounts:'user', remote:'screen', hardware:'chip',
   updates:'sync', print:'print'
 };
-const TILE_ICON = {'g-software':'bolt','g-slow':'slow','g-vpn':'net','g-slack':'chat','g-mac':'mac','g-suspicious':'shield'};
+const TILE_ICON = {'g-software':'bolt','g-slow':'slow','g-vpn':'net','g-slack':'chat','g-mac':'mac',
+                   'g-linux':'terminal','g-locked':'lock','g-disk':'file','g-suspicious':'shield'};
 function svg(name, cls){
   return '<svg class="' + (cls||'') + '" width="17" height="17" viewBox="0 0 24 24" fill="none" ' +
          'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
@@ -4015,7 +4749,9 @@ const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
    in it copies out as working code instead of a syntax error. */
 const subst = v => String(v).replace(/'/g, "''");
 const fill  = code => code.replace(/\{\{(\w+)\}\}/g, (m, k) => (k in vars ? subst(vars[k]) : m));
-const isMac = s => s.cat === 'mac';
+// Anything that is not PowerShell: it decides the shell label on the card, the
+// file extension on download and whether a shebang is prepended.
+const isShell = s => s.cat === 'mac' || s.cat === 'linux';
 const catOf = id => CATS.find(c => c.id === id);
 
 /* Light syntax colouring. A whole-line comment is treated as a comment and
@@ -4101,7 +4837,7 @@ function badgesFor(s){
 
 function scriptCard(s){
   const c = catOf(s.cat);
-  const mac = isMac(s);
+  const sh = isShell(s);
   return '<article class="card" id="s-' + s.id + '">' +
     '<div class="card-top"><div><div class="eyebrow">' + esc(c ? c.name : '') + '</div>' +
       '<h3>' + esc(s.title) + '</h3></div>' +
@@ -4109,10 +4845,11 @@ function scriptCard(s){
     '<p class="desc">' + s.desc + '</p>' +
     '<div class="codebox">' +
       '<div class="codebar">' +
-        '<span class="shell">' + (mac ? 'Terminal / bash' : 'PowerShell') + '</span>' +
+        '<span class="shell">' + (s.cat === 'linux' ? 'bash'
+          : s.cat === 'mac' ? 'Terminal / bash' : 'PowerShell') + '</span>' +
         '<span class="sp"></span>' +
         '<button class="cbtn pri" data-copy="' + s.id + '">Copy</button>' +
-        '<button class="cbtn" data-dl="' + s.id + '" title="Windows marks anything that arrived from the internet and then refuses to open it - &quot;Your Internet security settings prevented one or more files from being opened.&quot; Nothing is wrong with the file. Right-click it, Properties, tick Unblock at the bottom, OK. Or run Unblock-File on it in PowerShell. Copy is usually quicker.">.' + (mac ? 'sh' : 'ps1') + '</button>' +
+        '<button class="cbtn" data-dl="' + s.id + '" title="Windows marks anything that arrived from the internet and then refuses to open it - &quot;Your Internet security settings prevented one or more files from being opened.&quot; Nothing is wrong with the file. Right-click it, Properties, tick Unblock at the bottom, OK. Or run Unblock-File on it in PowerShell. Copy is usually quicker.">.' + (sh ? 'sh' : 'ps1') + '</button>' +
         '<button class="star' + (favs.has(s.id) ? ' on' : '') + '" data-fav="' + s.id + '" ' +
           'title="Favourite" aria-label="Favourite">' + (favs.has(s.id) ? '★' : '☆') + '</button>' +
       '</div>' +
@@ -4170,8 +4907,8 @@ function renderNav(){
     item('runs',  'Run-box shortcuts', RUNS.length, 'run') +
     item('notes', 'Ticket notes', undefined, 'note');
   $('#nav').innerHTML = h;
-  $('#maint').innerHTML = 'Built and looked after by <b>' + esc(MAINT.owner) + '</b><br>' +
-    'Last reviewed ' + esc(MAINT.reviewed) + '<br>Free to use, copy and change.';
+  $('#maint').innerHTML = 'Built by <b>' + esc(MAINT.owner) + '</b><br>' +
+    'Free to use, copy and change.';
 }
 
 /* ---------------- views ---------------- */
@@ -4419,9 +5156,9 @@ document.addEventListener('click', e => {
     copyText(fill(SCRIPTS.find(s => s.id === t.dataset.copy).code), t);
   } else if (t.dataset.dl){
     const s = SCRIPTS.find(x => x.id === t.dataset.dl);
-    const mac = isMac(s);
-    const head = (mac ? '#!/bin/bash\n' : '') + '# ' + s.title + '\n';
-    download(s.id + (mac ? '.sh' : '.ps1'), head + fill(s.code) + '\n', !mac);
+    const sh = isShell(s);
+    const head = (sh ? '#!/usr/bin/env bash\n' : '') + '# ' + s.title + '\n';
+    download(s.id + (sh ? '.sh' : '.ps1'), head + fill(s.code) + '\n', !sh);
   } else if (t.dataset.fav){
     const id = t.dataset.fav;
     favs.has(id) ? favs.delete(id) : favs.add(id);

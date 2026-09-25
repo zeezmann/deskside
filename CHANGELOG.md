@@ -3,6 +3,55 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.0] — 2026-09-25
+
+### Added - Linux
+- **38 scripts and six guides.** Triage on a box you have just been given a
+  shell on, disk and inodes, systemd units and their logs, networking, users and
+  access, packages, and the desktop side.
+- **Distribution detection rather than assumption.** Where a command forks the
+  script works out what it is looking at first: apt or dnf, ufw or firewalld or
+  nftables, NetworkManager or netplan or systemd-networkd, PipeWire or
+  PulseAudio. A script that assumes wrong fails in a way that looks like the
+  machine is broken, which is worse than no script.
+- Linux is a category beside macOS, not a stack toggle. It is an operating
+  system, not a vendor, so it shows whichever way the Google / Microsoft switch
+  is set.
+- A **Service** fill-in box, which appears on Linux views and nowhere else
+  because the existing logic only shows a box something on screen actually uses.
+- The front page goes from six tiles to **nine**, which fills the three-across
+  grid exactly instead of leaving an orphan row. Linux triage, account lockout
+  and disk full are the three added.
+
+### Changed
+- `isMac` became `isShell`. It drives the shell label on the card, the file
+  extension on download and whether a shebang is prepended - all of which Linux
+  needs too. Downloads now carry `#!/usr/bin/env bash` rather than `/bin/bash`.
+- Title, description and link-preview text say Windows, macOS and Linux.
+- The Linux badge is plum, not amber. Amber is already the sudo badge, and the
+  leaver script carries both.
+
+### Notes on writing these
+- Three descriptions had an unescaped apostrophe and one script used a dollar
+  sign followed by a brace - the two things the file warns about, both of which
+  I did anyway. The syntax check caught them before they shipped, which is the
+  argument for having one.
+
+## [1.5.0] — 2026-09-25
+
+### Removed - two things that would have rotted
+- **The review date.** The sidebar said "Last reviewed September 2026". A date
+  nobody moves is worse than no date at all: it either announces that the file
+  is unmaintained, or people learn to ignore it. The sidebar now credits the
+  author and says it is free to copy, which stays true without anyone doing
+  anything.
+- **The Windows table's compile date.** It said "compiled N days ago" and past
+  240 days told you it was probably wrong - which ages whether or not anything
+  actually is. Reframed as coverage: it now says which releases it knows about,
+  which is a fixed fact. Microsoft's published end-of-support dates do not
+  change after the fact; what goes missing is versions released later, and the
+  not-found message already says exactly that.
+
 ## [1.4.1] — 2026-09-25
 
 A housekeeping pass after 1.4. Nothing here changes what the toolkit does; it
