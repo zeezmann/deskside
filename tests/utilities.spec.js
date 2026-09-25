@@ -2,12 +2,12 @@ import { test, expect } from '@playwright/test';
 import { open } from './helpers.js';
 
 test.describe('the in-page utilities', () => {
-  test('all six mount without error', async ({ page }) => {
+  test('all fourteen mount without error', async ({ page }) => {
     const problems = [];
     await open(page, problems);
     await page.click('[data-view="utils"]');
     const ids = await page.evaluate(() => UTILS.map(u => u.id));
-    expect(ids.length).toBe(6);
+    expect(ids.length).toBe(14);
     for (const id of ids) {
       await page.click('[data-view="utils"]');
       await page.click(`[data-view="util:${id}"]`);

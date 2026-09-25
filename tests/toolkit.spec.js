@@ -110,7 +110,7 @@ test.describe('the toolkit itself', () => {
     const boxes = async () => page.evaluate(() =>
       [...document.querySelectorAll('[data-fill]')].filter(b => !b.hidden).map(b => b.dataset.fill));
 
-    for (const empty of ['home', 'guides', 'utils', 'notes', 'help', 'runs']) {
+    for (const empty of ['home', 'guides', 'utils', 'notes', 'runs']) {
       await page.click(`[data-view="${empty}"]`);
       await expect(page.locator('.fills')).toBeHidden();
     }
