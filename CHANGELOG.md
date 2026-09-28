@@ -3,6 +3,66 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.9.1] — 2026-09-28
+
+Two correctness fixes found by auditing rather than by using it.
+
+### Fixed - search ignored the Google / Microsoft switch
+
+The results list filtered guides through the stack and filtered scripts not at
+all, two lines apart in the same function. On a Google-only estate, typing a
+word into the search box surfaced all 23 Microsoft-only scripts that the sidebar
+correctly said were not there.
+
+This matters most for whoever the link gets passed to. Someone at first line has
+no reason to doubt the page, so the failure mode is them running an Entra script
+on an estate that has never had Entra.
+
+Four tests now cover it, including one that sweeps five search terms in both
+modes and asserts nothing out of stack is listed. Verified against the old code:
+two of the four fail on it.
+
+### Added - Windows 11 26H1, build 28000
+
+Shipped 10 February 2026 and missing from the version lookup, so it fell through
+to "not in the table" - which reads as *you typed it wrong* when the machine is
+perfectly fine.
+
+It is an ARM64-only platform release for newer Qualcomm Snapdragon silicon, new
+devices only, with no in-place path from 24H2 or 25H2 and no IoT Enterprise
+support. The row carries that as a note, because a build that should not exist on
+an Intel machine is worth saying out loud.
+
+Support dates: Home/Pro to 14 March 2028, Enterprise/Education to 13 March 2029.
+
+### Added - 26H2 recognised without inventing dates for it
+
+Build 26300 has been in Release Preview since 27 August 2026 and is not
+generally available, so Microsoft has published no support dates. It is now
+named as a preview build with no end-of-support figure at all, rather than
+either guessed at or reported as unknown. A test asserts the output contains
+neither "not in the table" nor any "Support ends" line.
+
+### Changed - per-build notes moved from the renderer into the table
+
+The Windows 10 22H2 "there is nothing newer to update to" note was a hardcoded
+`build === 19045` branch in the render function. It is now an optional seventh
+column on any row, which is how 26H1 carries its ARM64 caveat.
+
+### Fixed - the version lookup described a feature that was removed
+
+Its description still claimed "the date the table was compiled is shown on
+screen and ages visibly". That date was removed in 1.7. The description and a
+code comment above the table both still referred to it.
+
+### Added - two guards against the table drifting
+
+One asserts the stated coverage ceiling is the newest row actually in the table,
+so adding a release and forgetting the string is caught. The other asserts no
+row has support ending before the version shipped.
+
+60 tests, up from 52.
+
 ## [1.9.0] — 2026-09-25
 
 A cull, prompted by going through the whole thing properly. 201 scripts down to

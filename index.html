@@ -4503,15 +4503,16 @@ function utilCleanup(){
   /* ============================ 12. WHICH WINDOWS IS THIS ============================
      "Is this machine still supported, and does it have the fix" comes up every
      week and the answer is a build number nobody remembers. The table below goes
-     stale, which is why the date it was compiled is shown on screen rather than
-     buried in a comment. A support date that is quietly wrong is worse than none. */
+     stale, so it names on screen the newest release it covers and says plainly
+     when a build is past that. A support date that is quietly wrong is worse
+     than none. */
 
   // The newest release this table covers. It is a statement of coverage, not of
   // freshness: a build newer than this is simply not in the list, which the
   // not-found message says plainly. Nothing here needs revisiting on a date.
-  var WINVER_NEWEST = 'Windows 11 25H2';
+  var WINVER_NEWEST = 'Windows 11 26H1';
   var WINVER = [
-    // build, name, edition line, released, end of support (Home/Pro), end of support (Ent/Edu)
+    // build, name, edition line, released, end of support (Home/Pro), end of support (Ent/Edu), note
     [10240, 'Windows 10 1507',  'Windows 10', '2015-07-29', '2017-05-09', '2017-05-09'],
     [10586, 'Windows 10 1511',  'Windows 10', '2015-11-10', '2017-10-10', '2017-10-10'],
     [14393, 'Windows 10 1607',  'Windows 10', '2016-08-02', '2018-04-10', '2019-04-09'],
@@ -4525,12 +4526,27 @@ function utilCleanup(){
     [19042, 'Windows 10 20H2',  'Windows 10', '2020-10-20', '2022-05-10', '2023-05-09'],
     [19043, 'Windows 10 21H1',  'Windows 10', '2021-05-18', '2022-12-13', '2022-12-13'],
     [19044, 'Windows 10 21H2',  'Windows 10', '2021-11-16', '2023-06-13', '2024-06-11'],
-    [19045, 'Windows 10 22H2',  'Windows 10', '2022-10-18', '2025-10-14', '2025-10-14'],
+    [19045, 'Windows 10 22H2',  'Windows 10', '2022-10-18', '2025-10-14', '2025-10-14',
+     '22H2 was the last version of Windows 10. There is no newer one to update to - the path forward is '
+     + 'Windows 11 or Extended Security Updates.'],
     [22000, 'Windows 11 21H2',  'Windows 11', '2021-10-04', '2023-10-10', '2024-10-08'],
     [22621, 'Windows 11 22H2',  'Windows 11', '2022-09-20', '2024-10-08', '2025-10-14'],
     [22631, 'Windows 11 23H2',  'Windows 11', '2023-10-31', '2025-11-11', '2026-11-10'],
     [26100, 'Windows 11 24H2',  'Windows 11', '2024-10-01', '2026-10-13', '2027-10-12'],
-    [26200, 'Windows 11 25H2',  'Windows 11', '2025-09-30', '2027-10-12', '2028-10-10']
+    [26200, 'Windows 11 25H2',  'Windows 11', '2025-09-30', '2027-10-12', '2028-10-10'],
+    [28000, 'Windows 11 26H1',  'Windows 11', '2026-02-10', '2028-03-14', '2029-03-13',
+     'A platform release for ARM64 machines on the newer Qualcomm Snapdragon silicon, not something anybody '
+     + 'upgrades into. It shipped on new devices only, there is no in-place path to it from 24H2 or 25H2, and '
+     + 'IoT Enterprise is not supported on it. On an Intel or AMD machine this build should not be here at all, '
+     + 'so check the processor before you go any further.']
+  ];
+
+  // Builds that are out there but not generally available, so Microsoft has
+  // published no support dates to quote. Naming one is still better than telling
+  // somebody their build number is a typo.
+  var WINVER_PREVIEW = [
+    [26300, 'Windows 11 26H2', 'In the Release Preview channel since 27 August 2026. General availability had not '
+     + 'happened when this was written.']
   ];
   var WINVER_LTSC = [
     [14393, 'Windows 10 LTSB 2016', '2026-10-13'],
@@ -4559,13 +4575,15 @@ function utilCleanup(){
       '<button class="mini" data-wv="22621.4317">22621</button>' +
       '<button class="mini" data-wv="22631.4317">22631</button>' +
       '<button class="mini" data-wv="26100.2314">26100</button>' +
+      '<button class="mini" data-wv="26200.1742">26200</button>' +
       '<button class="mini" data-wv="17763.6414">17763</button></div>' +
       '<div class="hint" id="wv-asof"></div>' +
       '<div class="err" id="wv-err"></div></div>' +
       '<div id="wv-out"></div>'));
 
     el('wv-asof').innerHTML = 'Covers Windows 10 and Windows 11 up to <b>' + esc(WINVER_NEWEST) +
-      '</b>, plus the LTSC and Server builds. A newer release will not be in the list and will say so. ' +
+      '</b>, plus the LTSC and Server builds, and it recognises 26H2 as a preview build with no dates yet. ' +
+      'Anything newer than that is simply not in the list and will say so rather than guess. ' +
       'Support dates are Microsoft\'s published ones - check learn.microsoft.com/lifecycle before you ' +
       'quote one to a customer.';
 
@@ -4607,8 +4625,9 @@ function utilCleanup(){
       var client = WINVER.filter(function (r) { return r[0] === build; })[0];
       var ltsc = WINVER_LTSC.filter(function (r) { return r[0] === build; });
       var server = WINVER_SERVER.filter(function (r) { return r[0] === build; });
+      var preview = WINVER_PREVIEW.filter(function (r) { return r[0] === build; })[0];
 
-      if (!client && !ltsc.length && !server.length) {
+      if (!client && !preview && !ltsc.length && !server.length) {
         el('wv-out').innerHTML = '<div class="card"><div class="err">Build ' + build + ' is not in the table.</div>' +
           '<div class="hint">This list stops at ' + esc(WINVER_NEWEST) + ', so either the machine is on ' +
           'something newer, or it is an Insider build, or it is a typo. ' +
@@ -4617,6 +4636,17 @@ function utilCleanup(){
       }
 
       var html = '';
+      if (preview) {
+        html += '<div class="card"><h3>' + esc(preview[1]) + '</h3>' +
+          '<div style="margin-bottom:12px"><span class="badge b-warning"><span class="dot"></span>' +
+          'not generally available</span></div>' +
+          '<table><tr><td class="k">Build</td><td class="v mono">' + build +
+          (rev !== null ? '.' + rev : '') + '</td></tr></table>' +
+          '<div class="hint">' + esc(preview[2]) + ' There are no published support dates for it, so there is ' +
+          'no end-of-support figure to quote and nothing here is pretending otherwise. If this turned up on a ' +
+          'machine you support rather than one somebody opted into the Insider channel themselves, that is the ' +
+          'thing worth chasing.</div></div>';
+      }
       if (client) {
         var hp = until(client[4]), ee = until(client[5]);
         html += '<div class="card"><h3>' + esc(client[1]) + '</h3>' +
@@ -4629,9 +4659,7 @@ function utilCleanup(){
           '<tr><td class="k">Home, Pro, Pro for Workstations</td><td class="v">' + esc(hp[2]) + '</td></tr>' +
           '<tr><td class="k">Enterprise, Education, IoT Enterprise</td><td class="v">' + esc(ee[2]) + '</td></tr>' +
           '</table>' +
-          (client[2] === 'Windows 10' && build === 19045
-            ? '<div class="hint">22H2 was the last version of Windows 10. There is no newer one to update to - ' +
-              'the path forward is Windows 11 or Extended Security Updates.</div>' : '') +
+          (client[6] ? '<div class="hint">' + esc(client[6]) + '</div>' : '') +
           '</div>';
       }
       if (ltsc.length) {
@@ -4804,7 +4832,7 @@ const UTILS = [
     desc:'A line-by-line comparison of two blocks of text. Made for the moment you have ipconfig /all from the machine that works and the one that does not, or a config file before and after a change, and you need the line that differs rather than a feeling that something did.',
     mount: diffTool },
   { id:'winver',   name:'Which Windows is this', blurb:'Build number to version and support date', icon:'screen',
-    desc:'Turns a build number into the version it belongs to, when it shipped, and when support ends for each edition. Understands Windows 10, Windows 11, the LTSC builds and Windows Server. The date the table was compiled is shown on screen and ages visibly, because a support date that is quietly out of date is worse than no date at all.',
+    desc:'Turns a build number into the version it belongs to, when it shipped, and when support ends for each edition. Understands Windows 10, Windows 11, the LTSC builds and Windows Server. It names the newest release it covers, and a build past that is told plainly it is not in the list rather than given a guessed date, because a support date that is quietly wrong is worse than no date at all.',
     mount: winverTool },
   { id:'clean',    name:'Paste cleaner', blurb:'Find what Word smuggled into your text', icon:'wand',
     desc:'Text out of Word, a PDF or a chat window carries curly quotes, non-breaking spaces and characters with no width at all, and any one of them will break a form, a script or a search. This lists exactly what is in there with counts and code points, and hands back a clean version.',
@@ -5209,7 +5237,7 @@ function renderMain(){
   if (query){
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
     const hit = txt => words.every(w => txt.toLowerCase().includes(w));
-    const ss = SCRIPTS.filter(s => hit(s.title + ' ' + s.desc + ' ' + s.code + ' ' + s.cat));
+    const ss = activeScripts().filter(s => hit(s.title + ' ' + s.desc + ' ' + s.code + ' ' + s.cat));
     const gg = activeGuides().filter(g => hit(g.title + ' ' + g.sub + ' ' + g.steps.join(' ')));
     let h = headBlock('Results for "' + query + '"', gg.length + ' guides, ' + ss.length + ' scripts');
     if (!ss.length && !gg.length)

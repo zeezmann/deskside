@@ -49,6 +49,57 @@ test.describe('which Windows is this', () => {
     await expect(page.locator('#wv-out')).toContainText('not in the table');
     expect(problems).toEqual([]);
   });
+
+  // 26H1 is ARM64-only and shipped on new hardware, so it is rare but real. It
+  // used to fall through to "not in the table", which reads as "you typed it
+  // wrong" when the machine is fine.
+  test('knows the ARM64-only release and says why it is unusual', async ({ page }) => {
+    const problems = [];
+    await openTool(page, 'winver', problems);
+    await page.fill('#wv-in', '10.0.28000.1000');
+    const out = page.locator('#wv-out');
+    await expect(out).toContainText('Windows 11 26H1');
+    await expect(out).not.toContainText('not in the table');
+    await expect(out).toContainText('ARM64');
+    expect(problems).toEqual([]);
+  });
+
+  // A build that exists but has no published dates. Naming it without inventing
+  // an end-of-support figure is the whole point.
+  test('names a preview build without giving it dates it does not have', async ({ page }) => {
+    const problems = [];
+    await openTool(page, 'winver', problems);
+    await page.fill('#wv-in', '26300.9278');
+    const out = page.locator('#wv-out');
+    await expect(out).toContainText('Windows 11 26H2');
+    await expect(out).toContainText('not generally available');
+    await expect(out).not.toContainText('not in the table');
+    await expect(out).not.toContainText('Support ends');
+    expect(problems).toEqual([]);
+  });
+
+  // The coverage line is written by hand. If somebody adds a row and forgets
+  // the string, the page starts understating what it knows.
+  test('the stated ceiling is the newest row in the table', async ({ page }) => {
+    const problems = [];
+    await openTool(page, 'winver', problems);
+    const gap = await page.evaluate(() => {
+      const newest = WINVER.slice().sort((a, b) => b[0] - a[0])[0];
+      return { claimed: WINVER_NEWEST, actual: newest[1] };
+    });
+    expect(gap.claimed).toBe(gap.actual);
+    expect(problems).toEqual([]);
+  });
+
+  // Every date in the table is quoted to customers, so a typo matters.
+  test('no row has support ending before it shipped', async ({ page }) => {
+    const problems = [];
+    await openTool(page, 'winver', problems);
+    const bad = await page.evaluate(() =>
+      WINVER.filter(r => r[4] < r[3] || r[5] < r[4]).map(r => r[1]));
+    expect(bad).toEqual([]);
+    expect(problems).toEqual([]);
+  });
 });
 
 test.describe('paste cleaner', () => {

@@ -143,12 +143,16 @@ npx playwright install chromium
 npm test
 ```
 
-51 tests, run on every push. They cover the things that would quietly rot:
+60 tests, run on every push. They cover the things that would quietly rot:
 
 - the file loads with **zero external requests** — the offline promise, enforced
 - every script is reachable from a guide, and no guide points at a script that does not exist
 - a fill-in containing an apostrophe still produces valid PowerShell
 - the Google / Microsoft switch never leaves a dangling reference in any of its three states
+- **search obeys that switch too**, swept across five terms in both modes — it
+  did not, and quietly offered Microsoft scripts on a Google-only estate
+- the Windows version table's stated coverage matches its newest row, and no
+  version's support ends before it shipped
 - **seven screen sizes from 360px to 1024px, across nine views, with zero
   horizontal overflow** — one grid property once cost 720px of sideways scroll on
   a phone and nothing on a laptop, so this is now asserted rather than eyeballed
