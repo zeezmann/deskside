@@ -29,49 +29,6 @@ test.describe('rebuild and recovery', () => {
     expect(problems).toEqual([]);
   });
 
-  test('the unattended wipe reports and does nothing until told twice', async ({ page }) => {
-    const problems = [];
-    await open(page, problems);
-    const s = await get(page, 'reset-unattended');
-
-    // Default mode is Report, and the last line runs it with no arguments.
-    expect(s.code).toMatch(/\[string\]\s*\$Mode\s*=\s*'Report'/);
-    expect(s.code.trim().split('\n').pop().trim()).toBe('Start-DeviceWipe');
-
-    // Two separate gates: the machine named back, then a typed word.
-    expect(s.code).toContain('$ConfirmName -ne $env:COMPUTERNAME');
-    expect(s.code).toContain("Read-Host 'Type WIPE to go ahead'");
-    expect(problems).toEqual([]);
-  });
-
-  /**
-   * The gate is worth something only if you look at the machine and type its
-   * name. A printed, runnable Start-DeviceWipe line with the name already in it
-   * removes the one moment of friction it exists for - and the report printed
-   * exactly that, two lines above the prompt.
-   */
-  test('it never prints a ready-to-paste wipe command', async ({ page }) => {
-    const problems = [];
-    await open(page, problems);
-    const s = await get(page, 'reset-unattended');
-
-    const handed = s.code.split('\n').filter(l =>
-      /Start-DeviceWipe\s+-Mode/.test(l) && /COMPUTERNAME/.test(l));
-    expect(handed, 'prints a runnable wipe line with the name filled in').toEqual([]);
-
-    // The name still has to be visible, or the report is useless.
-    expect(s.code).toContain("'Machine      : {0}' -f $env:COMPUTERNAME");
-
-    // A wrong guess must not be answered with the right name.
-    const branch = s.code
-      .slice(s.code.indexOf('$ConfirmName -ne'), s.code.indexOf('$m = $METHOD[$Mode]'))
-      .split('\n').filter(l => /Write-Host/.test(l)).join('\n');
-    expect(branch).not.toContain('COMPUTERNAME');
-    expect(problems).toEqual([]);
-  });
-
-  // Getting one of these wrong wipes a machine in a way the caller did not ask
-  // for, and they differ only by a few characters in the middle.
   test('the wipe method names are exactly the documented four', async ({ page }) => {
     const problems = [];
     await open(page, problems);
@@ -181,6 +138,56 @@ test.describe('rebuild and recovery', () => {
     await page.click('[data-view="rebuild"]');
     await expect(page.locator('.card h3')).toHaveCount(7);
     await expect(page.locator('#s-reset-unattended')).toBeVisible();
+    expect(problems).toEqual([]);
+  });
+});
+
+/**
+ * Report-only as of 1.11.0. It shipped able to wipe, with a call that never
+ * worked and a confirmation that did not stop a live laptop being confirmed.
+ * What it knows was worth keeping; what it could do was not.
+ */
+test.describe('the wipe script cannot wipe', () => {
+  const get = (page, id) => page.evaluate(i => SCRIPTS.find(s => s.id === i), id);
+
+  test('it invokes nothing and registers nothing', async ({ page }) => {
+    const problems = [];
+    await open(page, problems);
+    const s = await get(page, 'reset-unattended');
+
+    const acts = s.code.split('\n').filter(l => {
+      const bare = l.replace(/'[^']*'/g, '');
+      return /Invoke-CimMethod|\$session\.InvokeMethod|Register-ScheduledTask|Start-ScheduledTask|Set-Content/.test(bare);
+    });
+    expect(acts, 'still able to act').toEqual([]);
+    expect(s.badges).not.toContain('risk');
+    expect(s.badges).not.toContain('changes');
+    expect(problems).toEqual([]);
+  });
+
+  test('it still documents what it will not do', async ({ page }) => {
+    const problems = [];
+    await open(page, problems);
+    const s = await get(page, 'reset-unattended');
+    for (const m of ['doWipeMethod',
+                     'doWipePersistUserDataMethod',
+                     'doWipePersistProvisionedDataMethod',
+                     'doWipeProtectedMethod']) {
+      expect(s.code, m).toContain(m);
+    }
+    // The two that cost a day: the keyed lookup and the SYSTEM principal.
+    expect(s.code).toContain("ParentID='./Vendor/MSFT' and InstanceID='RemoteWipe'");
+    expect(s.code).toContain('S-1-5-18');
+    expect(s.code).toContain('CimSession');
+    expect(problems).toEqual([]);
+  });
+
+  test('it says whether the machine is still in service', async ({ page }) => {
+    const problems = [];
+    await open(page, problems);
+    const s = await get(page, 'reset-unattended');
+    expect(s.code).toContain('IN SERVICE');
+    expect(s.code).toContain('$cs.UserName');
     expect(problems).toEqual([]);
   });
 });

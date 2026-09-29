@@ -3,6 +3,81 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.11.0] — 2026-09-29
+
+### Changed - the unattended wipe is report-only
+
+It can no longer wipe anything. It reports whether the machine could take one,
+names the four methods, prints the exact invocation pattern and the SYSTEM
+requirement, and calls none of them. Badges drop to `admin`; the script is 82
+lines down to 45.
+
+The decision was not about this one bug. In three days that script shipped a
+call that never worked, a readiness check that queried the class one way while
+the wipe invoked it another - so "Wipe class: present" was true and meaningless
+- and a confirmation gate that a live, in-service laptop cleared on its first
+contact with a real machine. It is also the only script here that cannot be
+verified without a spare machine to destroy, and it sat behind a Copy button on
+a page shared with people who have not read any of this.
+
+What was worth keeping is the knowledge, and all of it is kept: the four method
+names, the keyed `-Filter` lookup, `CimSession.InvokeMethod` rather than
+`Invoke-CimMethod -InputObject`, and reaching SYSTEM with a scheduled task
+principal instead of PsExec. Those took a day to establish and are hard to find
+written down.
+
+Wiping unattended for real is Intune's Wipe button.
+
+### Changed - the in-service check stays
+
+Signed-in console user, domain or Entra join, any profile used in the last 24
+hours. It no longer gates anything because there is nothing to gate, but it is
+the fastest way to answer "is this actually the machine being retired".
+
+84 tests. Three rewritten to assert the script invokes nothing, registers
+nothing and carries no `risk` badge.
+
+## [1.10.4] — 2026-09-29
+
+### Fixed - the wipe call was written the wrong way and never worked
+
+`Invoke-CimMethod -InputObject` on an instance fetched without a filter returns
+`MI RESULT 6 / ObjectNotFound`, even though the class is plainly present and the
+report says so. The MDM WMI Bridge Provider is driven through a `CimSession`
+with the instance fetched by its keys:
+
+```powershell
+$session = New-CimSession
+$params = New-Object Microsoft.Management.Infrastructure.CimMethodParametersCollection
+$params.Add([Microsoft.Management.Infrastructure.CimMethodParameter]::Create("param", "", "String", "In"))
+$i = Get-CimInstance -Namespace $ns -ClassName MDM_RemoteWipe -Filter "ParentID='./Vendor/MSFT' and InstanceID='RemoteWipe'"
+$session.InvokeMethod($ns, $i, $method, $params)
+```
+
+Found by it failing on a real machine. The report step was checking for the
+class with one query and the wipe was invoking it with another, so "Wipe class:
+present" was true and meaningless.
+
+The call's return value now goes to `%SystemRoot%\Temp\deskside-wipe.log`,
+because a scheduled task running hidden as SYSTEM otherwise fails in silence.
+
+### Changed - the confirmation did not stop the thing it exists to stop
+
+Typing the name of the machine you are stood at is no barrier when the machine
+you are stood at is your own. That is exactly what happened: the gate was
+cleared on a live, in-service laptop, and only the bug above stopped it.
+
+Two changes:
+
+- **An in-service check.** Signed-in console user, domain or Entra join, or any
+  profile used in the last 24 hours. Shown in the report, and printed in red
+  before the confirmation. A machine being retired does not look like that.
+- **The serial, not the name.** The second gate now asks for the serial off the
+  sticker. A machine name is something you know; a serial means looking at the
+  hardware in front of you.
+
+87 tests. Four new ones, all failing against 1.10.3.
+
 ## [1.10.3] — 2026-09-29
 
 ### Changed - eight descriptions cut back to information

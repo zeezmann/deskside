@@ -3299,91 +3299,57 @@ function Start-Reset {
 
 Start-Reset`);
 
-S('reset-unattended','rebuild','Wipe with nobody at the keyboard',['admin','changes','risk'],
-'The mechanism behind the Wipe button in Intune, driven locally: the <span class="mono">MDM_RemoteWipe</span> class in <span class="mono">root\\CIMv2\\MDM\\DMMap</span>. No console session, no wizard, no tenant. Since systemreset went in 24H2 it is the only documented way to start a reset from a script rather than a screen.<br><br>It reports by default. Acting needs a mode, this machine’s name typed back, then the word WIPE. The name is in the report but never printed as a runnable line.<br><br><span class="mono">-Mode Wipe</span> - standard wipe.<br><span class="mono">-Mode KeepUserData</span> - resets Windows, keeps accounts and data.<br><span class="mono">-Mode PersistProvisioned</span> - keeps provisioning and reapplies it, the Autopilot-style reset.<br><span class="mono">-Mode Protected</span> - survives interruption and fully cleans the drive. <b>Microsoft warns it can leave some configurations unable to boot.</b> For a machine leaving the building, not one coming back.<br><br>It needs SYSTEM, not merely elevation. Microsoft’s docs use PsExec; this uses a scheduled task with a SYSTEM principal, so nothing is downloaded.',
+S('reset-unattended','rebuild','Can this machine be wiped unattended?',['admin'],
+'Whether an unattended wipe is possible on this machine, and what it takes. <b>It reports only and calls nothing.</b> Wiping unattended for real is Intune’s Wipe button, not a paste from a web page.<br><br>The mechanism is the <span class="mono">MDM_RemoteWipe</span> class in <span class="mono">root\\CIMv2\\MDM\\DMMap</span>, which is what Intune drives. Four methods:<br><span class="mono">doWipeMethod</span> - standard wipe.<br><span class="mono">doWipePersistUserDataMethod</span> - resets Windows, keeps accounts and data.<br><span class="mono">doWipePersistProvisionedDataMethod</span> - keeps provisioning and reapplies it, the Autopilot-style reset.<br><span class="mono">doWipeProtectedMethod</span> - survives interruption and fully cleans the drive. <b>Microsoft warns it can leave some configurations unable to boot.</b><br><br><b>Two traps.</b> It has to go through a <span class="mono">CimSession</span> with the instance fetched by its keys - <span class="mono">Invoke-CimMethod -InputObject</span> returns <span class="mono">ObjectNotFound</span> however present the class is. And it runs as SYSTEM, not merely elevated: Microsoft’s docs use PsExec, a scheduled task with principal <span class="mono">S-1-5-18</span> gets there natively. The script prints the exact pattern for both.',
 String.raw`
-function Start-DeviceWipe {
-  param(
-    [ValidateSet('Report','Wipe','KeepUserData','PersistProvisioned','Protected')]
-    [string] $Mode = 'Report',
-    [string] $ConfirmName = ''
-  )
+$ns     = 'root\cimv2\mdm\dmmap'
+$filter = "ParentID='./Vendor/MSFT' and InstanceID='RemoteWipe'"
+$inst   = Get-CimInstance -Namespace $ns -ClassName MDM_RemoteWipe -Filter $filter -ErrorAction SilentlyContinue
+$cs     = Get-CimInstance Win32_ComputerSystem
 
-  $METHOD = @{
-    Wipe               = 'doWipeMethod'
-    KeepUserData       = 'doWipePersistUserDataMethod'
-    PersistProvisioned = 'doWipePersistProvisionedDataMethod'
-    Protected          = 'doWipeProtectedMethod'
+Write-Host ''
+Write-Host ('Machine : {0}' -f $env:COMPUTERNAME) -ForegroundColor Cyan
+Write-Host ('Serial  : {0}' -f (Get-CimInstance Win32_BIOS).SerialNumber)
+if ($inst) { Write-Host 'Wipe    : class and instance both reachable' -ForegroundColor Green }
+else       { Write-Host 'Wipe    : instance not reachable, nothing would work here' -ForegroundColor Red }
+
+$inUse = @()
+if ($cs.UserName)     { $inUse += 'signed in at the console: ' + $cs.UserName }
+if ($cs.PartOfDomain) { $inUse += 'joined to ' + $cs.Domain }
+if ((dsregcmd /status 2>&1 | Out-String) -match 'AzureAdJoined\s*:\s*YES') { $inUse += 'joined to Entra' }
+Get-CimInstance Win32_UserProfile -Filter 'Special = False' | ForEach-Object {
+  if ($_.LastUseTime -and $_.LastUseTime -gt (Get-Date).AddDays(-1)) {
+    $inUse += 'profile used in the last 24h: ' + (Split-Path $_.LocalPath -Leaf)
   }
-
-  $admin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
-           ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-  if (-not $admin) { Write-Host 'Needs an elevated PowerShell.' -ForegroundColor Red; return }
-
-  $ns = 'root\cimv2\mdm\dmmap'
-  $inst = Get-CimInstance -Namespace $ns -ClassName MDM_RemoteWipe -ErrorAction SilentlyContinue |
-          Select-Object -First 1
-
-  Write-Host ''
-  Write-Host ('Machine      : {0}' -f $env:COMPUTERNAME) -ForegroundColor Cyan
-  Write-Host ('Serial       : {0}' -f (Get-CimInstance Win32_BIOS).SerialNumber)
-  if ($inst) { Write-Host 'Wipe class   : present' -ForegroundColor Green }
-  else {
-    Write-Host 'Wipe class   : NOT present on this build' -ForegroundColor Red
-    Write-Host '  Nothing here will work. Use the attended reset instead.'
-    return
-  }
-
-  if ($Mode -eq 'Report') {
-    Write-Host ''
-    Write-Host 'Reported only. Nothing has been started.' -ForegroundColor Cyan
-    Write-Host 'To actually wipe, name the mode and confirm the machine by name:'
-    Write-Host '  Start-DeviceWipe -Mode Wipe -ConfirmName <the Machine name above>'
-    Write-Host ''
-    Write-Host '  Wipe                standard wipe'
-    Write-Host '  KeepUserData        reset Windows, keep accounts and data'
-    Write-Host '  PersistProvisioned  keep provisioning and reapply it afterwards'
-    Write-Host '  Protected           resilient, fully cleans the drive, can leave it unbootable'
-    return
-  }
-
-  if ($ConfirmName -ne $env:COMPUTERNAME) {
-    Write-Host ''
-    Write-Host 'Not confirmed. Nothing done.' -ForegroundColor Yellow
-    Write-Host 'That is not this machine. The name is on the Machine line above.'
-    return
-  }
-
-  $m = $METHOD[$Mode]
-  Write-Host ''
-  Write-Host ('About to call {0} on {1}.' -f $m, $env:COMPUTERNAME) -ForegroundColor Red
-  Write-Host 'There is no undo and no progress bar. The machine reboots into the wipe.' -ForegroundColor Red
-  $sure = (Read-Host 'Type WIPE to go ahead').Trim()
-  if ($sure -ne 'WIPE') { Write-Host 'Stopped.' -ForegroundColor Green; return }
-
-  $path = Join-Path $env:SystemRoot 'Temp\deskside-wipe.ps1'
-  $body = '$i = Get-CimInstance -Namespace "root\cimv2\mdm\dmmap" -ClassName MDM_RemoteWipe | Select-Object -First 1' + [Environment]::NewLine +
-          'Invoke-CimMethod -InputObject $i -MethodName "' + $m + '" -Arguments @{ param = "" }'
-  Set-Content -Path $path -Value $body -Encoding ASCII -Force
-
-  $task = 'Deskside-RemoteWipe'
-  $arg  = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $path + '"'
-  $act  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arg
-  $pri  = New-ScheduledTaskPrincipal -UserId 'S-1-5-18' -LogonType ServiceAccount -RunLevel Highest
-  Register-ScheduledTask -TaskName $task -Action $act -Principal $pri -Force | Out-Null
-  Start-ScheduledTask -TaskName $task
-
-  Write-Host ''
-  Write-Host ('Started as SYSTEM via scheduled task "{0}".' -f $task) -ForegroundColor Yellow
-  Write-Host 'The machine should reboot into the wipe within a minute or so.'
-  Write-Host ''
-  Write-Host 'If it does not, the call failed and both of these are still sitting there:'
-  Write-Host ('  {0}' -f $path)
-  Write-Host ('  Unregister-ScheduledTask -TaskName {0} -Confirm:$false' -f $task)
-  Write-Host 'Clean them up before you walk away, and put the serial on the ticket.'
 }
 
-Start-DeviceWipe`);
+Write-Host ''
+if ($inUse.Count) {
+  Write-Host 'IN SERVICE:' -ForegroundColor Red
+  $inUse | ForEach-Object { Write-Host ('  - ' + $_) -ForegroundColor Red }
+} else {
+  Write-Host 'No sign this machine is in use.' -ForegroundColor Green
+}
+
+Write-Host ''
+Write-Host 'Methods on MDM_RemoteWipe:' -ForegroundColor Cyan
+Write-Host '  doWipeMethod                        standard wipe'
+Write-Host '  doWipePersistUserDataMethod         resets Windows, keeps accounts and data'
+Write-Host '  doWipePersistProvisionedDataMethod  keeps provisioning and reapplies it'
+Write-Host '  doWipeProtectedMethod               survives interruption, fully cleans the drive'
+Write-Host ''
+Write-Host 'Reported only. This calls none of them.' -ForegroundColor Yellow
+
+Write-Host ''
+Write-Host 'The pattern, which has to run as SYSTEM:' -ForegroundColor Cyan
+Write-Host '  $session = New-CimSession'
+Write-Host '  $params = New-Object Microsoft.Management.Infrastructure.CimMethodParametersCollection'
+Write-Host '  $params.Add([Microsoft.Management.Infrastructure.CimMethodParameter]::Create("param", "", "String", "In"))'
+Write-Host '  $i = Get-CimInstance -Namespace $ns -ClassName MDM_RemoteWipe -Filter $filter'
+Write-Host '  $session.InvokeMethod($ns, $i, "doWipeMethod", $params)'
+Write-Host ''
+Write-Host 'To SYSTEM without PsExec, run it from a scheduled task registered with'
+Write-Host '  New-ScheduledTaskPrincipal -UserId S-1-5-18 -LogonType ServiceAccount -RunLevel Highest'`);
 
 S('boot-advanced','rebuild','Restart into recovery or Advanced Startup',['admin','changes'],
 '<span class="mono">shutdown /r /o</span> is the ordinary route. <span class="mono">reagentc /boottore</span> arms the next restart to go straight into WinRE, and still works when the first one does not.<br><br>Most encrypted machines ask for the BitLocker recovery key on the way in. This suspends protection for one reboot so it does not; <span class="mono">-RebootCount 1</span> means protection comes back on by itself afterwards.',
@@ -3541,7 +3507,7 @@ const GUIDES = [
   'Repair before you rebuild, if the machine is coming back to the same person. It is far quicker than a reset and it keeps their setup. [[sfc-dism]] [[disk-reclaim]]',
   'If you need to get into recovery or Safe Mode to try something first, do it properly - suspend BitLocker for the one reboot, and know the way back out before you go in. [[boot-advanced]] [[boot-safe]]',
   'Reset with the user there. This is the normal route: they choose keep-my-files or remove-everything on screen, which is a decision they should be making rather than you. [[reset-attended]]',
-  'Wipe with nobody there, for a machine being collected, recovered from a leaver, or reset out of hours. Different mechanism entirely, and the mode you pick is the difference between a machine that comes back and one that does not boot. [[reset-unattended]]',
+  'Wiping with nobody there is a different mechanism, and at scale it belongs in Intune. This reports whether the machine could take one, names the four methods and prints the pattern, and calls none of them. [[reset-unattended]]',
   'Passing a spare on to somebody else rather than wiping it: generalise it so it comes up at the out-of-box screen with no trace of the last person. Take it out of the tenant first, not after. [[sysprep-handover]]',
   'Close it out: serial and what you did on the ticket, the asset record updated, and the BitLocker key filed somewhere that is not a ticket comment.'
  ]},
