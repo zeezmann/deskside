@@ -143,7 +143,7 @@ npx playwright install chromium
 npm test
 ```
 
-76 tests, run on every push. They cover the things that would quietly rot:
+83 tests, run on every push. They cover the things that would quietly rot:
 
 - the file loads with **zero external requests** — the offline promise, enforced
 - every script is reachable from a guide, and no guide points at a script that does not exist

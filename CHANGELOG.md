@@ -3,6 +3,110 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.10.3] — 2026-09-29
+
+### Changed - eight descriptions cut back to information
+
+The page's 186 descriptions average 177 characters. The seven I wrote this week
+ran 628 to 1407, and `disk-profiles-clean` was 1540 - the longest on the site.
+That was not density, it was commentary.
+
+What came out, and why each was not information:
+
+- **Editorialising.** "Two minutes here saves that conversation." "That one
+  costs people twenty minutes." "Not a tool, an accident waiting for a Tuesday."
+  All true, none of it tells you anything you can act on.
+- **Steps the reader already knows.** "Walk up to the machine, open an elevated
+  PowerShell, paste this." "Run it, read it, put it on the ticket, then reset."
+- **Tautology.** "-DryRun prints both tables and stops, so you can see exactly
+  what it would offer before it offers it." The second half is the first half.
+- **Previewing output the script is about to print anyway** - a full list of
+  every field `before-wipe` returns, compressed to one line.
+- **One sentence written to a single person:** "you asked for presence to be the
+  rule, and presence is the rule." Nobody else reading the page knows who "you"
+  is, or that there was a conversation.
+
+Every fact survived: the 24H2 removal, the error text, the `{current}` quoting
+trap, the four wipe modes, the OEM firmware key, the rearm count. Longest is now
+1004 (a set of key bindings), mean 217 to 202.
+
+### Added - three guards so this does not come back
+
+A ceiling on description length, a check for text addressed to one person in a
+conversation, and a check for walking the reader through opening a console. All
+three fail against the previous version.
+
+83 tests.
+
+## [1.10.2] — 2026-09-29
+
+### Fixed - the wipe script handed you the command to wipe the machine you were on
+
+Report mode printed `Start-DeviceWipe -Mode Wipe -ConfirmName <this machine>`
+with the name already filled in, two lines above the prompt. The gate exists to
+make you look at which machine you are stood at and type its name; a runnable
+line removes exactly that. The mismatch branch was worse - guess wrong and it
+told you the right answer.
+
+Now it prints a placeholder, and a wrong name gets "that is not this machine,
+the name is on the Machine line above" and nothing more. The name is still in
+the report, so nothing is hidden - it just is not handed over ready to paste.
+
+### Changed - no rationale comments in the scripts
+
+Four comment blocks came out of the new section. The reasoning belongs in the
+description on the page, not in something you paste into somebody else's
+console. The section now has none at all.
+
+80 tests.
+
+## [1.10.1] — 2026-09-29
+
+### Fixed - the attended reset called a command that no longer exists
+
+`systemreset.exe` was **removed from System32 in Windows 11 24H2**. On 23H2 and
+earlier it is still there; on anything current it is gone, and calling it gives
+`The term 'systemreset' is not recognized as the name of a cmdlet`, which reads
+like a typo and sends you looking in entirely the wrong place.
+
+Shipped broken in 1.10.0 and caught within the hour by running it. The research
+behind that script leant on a 2023 forum thread about the switches and never
+asked the more basic question of whether the binary still ships.
+
+Worth being clear about what is and is not broken: the reset engine is fine,
+WinRE is fine. Microsoft removed the command-line shortcut, not the feature.
+
+The script now looks before it leaps and offers only what the machine in front
+of you actually has:
+
+- **Settings** — `ms-settings:recovery`. Supported, every build, no admin.
+- **Direct** — `SystemSettingsAdminFlows.exe FeaturedResetPC`, straight into the
+  reset flow. Undocumented, and labelled as such in both the description and the
+  output, because an undocumented entry point presented as a normal one is how
+  you end up with a script that breaks silently in two years.
+- **Factory image** — `systemreset -factoryreset`, offered only where that
+  binary exists, and invoked by full path rather than by name.
+- **Advanced Startup** — `shutdown /r /o`. Supported, works everywhere.
+
+It also now reports which of those the build has before you choose, so the
+absence is a stated fact rather than a surprise mid-job.
+
+### Added - a 32-bit PowerShell is caught by name
+
+A 32-bit PowerShell on 64-bit Windows has System32 redirected to SysWOW64, and a
+System32 binary then fails with *exactly the same error text* as one that has
+been removed. Two very different problems, one message. The script rules it out
+up front and says which it is.
+
+### Testing
+
+Three new tests. The one that matters asserts no bare `systemreset` call
+survives anywhere in that script, ignoring anything inside quotes so the
+explanatory text still reads normally. Verified by reintroducing the bug and
+watching it fail.
+
+79 tests, up from 76.
+
 ## [1.10.0] — 2026-09-29
 
 ### Added - Rebuild & recovery, a new section of seven scripts

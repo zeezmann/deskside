@@ -1540,7 +1540,7 @@ function Reclaim-Disk {
 Reclaim-Disk`);
 
 S('disk-profiles-clean','perf','Clear everyone except the person sat at the machine',['admin','changes','risk'],
-'The hot-desking ticket, done properly. Walk up to the machine, open an elevated PowerShell, paste this. It works out who is actually sat there, protects them and anything the machine depends on, and then asks you about every other profile one at a time with its size and last-used date.<br><br><b>Run it with -DryRun first.</b> That prints both tables and stops without asking you anything, so you can see exactly what it would offer before it offers it.<br><br><b>What it protects, and tells you it protected:</b> the signed-in console user, anyone with a disconnected session still holding files, any account with a running process, any account a Windows service starts as, the built-in and system profiles, and the account you are running as. Each one is listed with the reason, because a thing silently withheld is worse than a thing refused out loud.<br><br><b>Y</b> deletes, <b>N</b> keeps, <b>A</b> does the rest after one confirmation showing the total, <b>Q</b> stops. Enter on its own means No.<br><br>Age is shown but decides nothing - you asked for presence to be the rule, and presence is the rule. A profile last used yesterday by somebody who has since moved desks is still fair game; that is your call to make with the person in front of you, not a number in a script.<br><br><b>Why it is a function.</b> A script containing Read-Host pasted into a console eats its own remaining lines as the answers to its prompts. Defining a function and calling it on the last line means the prompts wait for you.<br><br>Removing a profile takes the desktop, saved passwords and any local Outlook data with it. There is no undo.',
+'For the hot-desking ticket. It works out who is sat at the machine, protects them and anything the machine depends on, then asks about every other profile one at a time with its size and last-used date. <span class="mono">-DryRun</span> prints both tables and asks nothing.<br><br><b>Protected, and listed with the reason:</b> the console user, anyone with a disconnected session holding files, any account with a running process, any account a Windows service starts as, the built-in profiles, and the account you are running as.<br><br><b>Y</b> deletes, <b>N</b> keeps, <b>A</b> does the rest after one confirmation showing the total, <b>Q</b> stops. Enter alone means No.<br><br>Age is shown but decides nothing - presence is the rule. A profile used yesterday by somebody who has since moved desks is still fair game.<br><br>It is a function because a pasted Read-Host block eats the rest of the paste as its own answers; calling it on the last line means the prompts wait for you.<br><br>Removing a profile takes the desktop, saved passwords and any local Outlook data with it. There is no undo.',
 String.raw`
 function Clear-OtherProfiles {
   param(
@@ -3096,7 +3096,7 @@ echo "Copy it off with:  scp $(whoami)@$(hostname -s):$out ."`);
    cannot get back, then reset. */
 
 S('winre-check','rebuild','Will a reset actually work on this machine?',['admin'],
-'<b>Run this before you promise anybody a reset.</b> Reset this PC, Advanced Startup and Troubleshoot all boot into the recovery environment, and on a surprising number of machines it is switched off or the image is gone - usually after a disk was cloned, a partition was tidied up, or a WinRE update failed for want of space.<br><br>The failure you get otherwise is <span class="mono">Could not find the recovery environment</span>, after the user has already agreed to lose everything. Two minutes here saves that conversation.<br><br>The recovery partition has no drive letter, so its free space cannot be read without mounting it. A partition well under 1 GB is where the WinRE servicing failures come from.',
+'Reset this PC, Advanced Startup and Troubleshoot all boot into the recovery environment. On plenty of machines it has been switched off or the image is gone - usually after a clone, a partition tidy-up, or a WinRE update that failed for want of space. Without it you get <span class="mono">Could not find the recovery environment</span>, after the user has already agreed to lose everything.<br><br>The recovery partition has no drive letter, so free space cannot be read without mounting it. Well under 1 GB is where the servicing failures start.',
 String.raw`
 $raw = reagentc /info 2>&1 | Out-String
 Write-Host $raw -ForegroundColor Gray
@@ -3133,7 +3133,7 @@ Get-BitLockerVolume -ErrorAction SilentlyContinue |
 Write-Host 'Any volume listed above means you need the recovery key to hand before you reboot into recovery.'`);
 
 S('before-wipe','rebuild','Capture everything before you wipe',['admin'],
-'The things you cannot get back afterwards, on one screen, in the order you will wish you had them. Run it, read it, put it on the ticket, <i>then</i> reset.<br><br>It covers the machine identity and serial for the asset record, the Windows edition and how it is licensed, whether the OEM key is in firmware (it is, on anything modern, and it reactivates by itself), the join state, the BitLocker recovery key, every local profile with its size, and whether OneDrive or Drive is actually finished syncing.<br><br><b>On the recovery key.</b> This prints it. Do not paste it into a ticket - put it where your passwords live, and if the machine is Entra-joined back it up properly with the command shown rather than trusting that somebody did.<br><br>"They said everything is in the cloud" is not a check. The profile sizes below are.',
+'What you cannot get back once it is wiped: identity and serial, edition and licence channel, join state, the BitLocker recovery key, profile sizes, and whether a sync client is actually running.<br><br>An OEM key in firmware - which anything modern has - means Windows reactivates itself afterwards with no key to find.<br><br><b>It prints the recovery key.</b> That belongs where your passwords live rather than in a ticket, and escrowing it with the command shown beats assuming somebody already has.',
 String.raw`
 $cs = Get-CimInstance Win32_ComputerSystem
 $bi = Get-CimInstance Win32_BIOS
@@ -3216,13 +3216,20 @@ Write-Host 'Check the sync client says "up to date" on screen. A running process
 Write-Host 'as a finished upload, and a 40 GB Desktop is not going to finish while you wait.'`);
 
 S('reset-attended','rebuild','Reset this PC, with somebody at the keyboard',['admin','changes','risk'],
-'The supported route, and the one to use whenever there is a human present. It opens the Reset this PC wizard, where <b>Keep my files</b> and <b>Remove everything</b> are chosen on screen by whoever owns the consequences.<br><br>Three ways in, and this asks which you want:<br><b>1. Reset this PC</b> - <span class="mono">systemreset</span>, the ordinary wizard.<br><b>2. Factory image</b> - <span class="mono">systemreset -factoryreset</span>, back to the OEM build where the machine still has one. Not every machine does.<br><b>3. Advanced Startup</b> - <span class="mono">shutdown /r /o /t 0</span>, for Troubleshoot, Startup Repair, a USB boot or firmware settings.<br><br><b>Microsoft does not document the systemreset switches</b> and there is no supported silent mode. Anything claiming otherwise is guessing. If you need it to run with nobody there, that is the other script, and it is a completely different mechanism.<br><br>It checks WinRE is present first, because without it all three of these fail.',
+'<b>systemreset was removed from System32 in Windows 11 24H2.</b> On 23H2 and earlier it is still there; on anything newer it gives <span class="mono">is not recognized as the name of a cmdlet</span>, which reads like a typo and is not one. The reset engine is untouched - only the shortcut to it went.<br><br>This checks what the build actually has and offers what will work:<br><b>Settings</b> - <span class="mono">ms-settings:recovery</span>. Supported, every build, no admin.<br><b>Direct</b> - <span class="mono">SystemSettingsAdminFlows.exe FeaturedResetPC</span>. Undocumented, so a convenience rather than something to build on.<br><b>Factory image</b> - <span class="mono">systemreset -factoryreset</span>, only where that binary still exists.<br><b>Advanced Startup</b> - <span class="mono">shutdown /r /o</span>. Reset this PC is in there too, under Troubleshoot.<br><br>None of them has a silent mode.',
 String.raw`
 function Start-Reset {
   $admin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
            ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
   if (-not $admin) {
     Write-Host 'This needs an elevated PowerShell.' -ForegroundColor Red
+    return
+  }
+
+  if (-not [Environment]::Is64BitProcess -and [Environment]::Is64BitOperatingSystem) {
+    Write-Host 'You are in a 32-bit PowerShell on 64-bit Windows.' -ForegroundColor Red
+    Write-Host 'System32 is redirected to SysWOW64 from here and these tools will not be found.'
+    Write-Host 'Close this window and open the ordinary PowerShell as administrator.'
     return
   }
 
@@ -3234,6 +3241,20 @@ function Start-Reset {
   }
   Write-Host 'WinRE is present.' -ForegroundColor Green
 
+  $sys    = Join-Path $env:SystemRoot 'System32'
+  $legacy = Join-Path $sys 'SystemReset.exe'
+  $flows  = Join-Path $sys 'SystemSettingsAdminFlows.exe'
+  $hasLegacy = Test-Path $legacy
+  $hasFlows  = Test-Path $flows
+
+  Write-Host ''
+  if ($hasLegacy) {
+    Write-Host 'systemreset.exe is on this build.' -ForegroundColor Green
+  } else {
+    Write-Host 'systemreset.exe is not on this build - removed in Windows 11 24H2.' -ForegroundColor Yellow
+    Write-Host 'That is expected on anything current, and the reset itself still works.'
+  }
+
   $bl = Get-BitLockerVolume -ErrorAction SilentlyContinue | Where-Object { $_.ProtectionStatus -eq 'On' }
   if ($bl) {
     Write-Host ''
@@ -3243,17 +3264,32 @@ function Start-Reset {
   Write-Host ''
   Write-Host 'Before you go any further: has the user actually confirmed what they lose?' -ForegroundColor Yellow
   Write-Host ''
-  Write-Host '  1  Reset this PC          - the wizard, keep files or remove everything'
-  Write-Host '  2  Factory image          - back to the OEM build, if this machine has one'
-  Write-Host '  3  Advanced Startup       - Troubleshoot, Startup Repair, USB boot, firmware'
+  Write-Host '  1  Reset this PC, via Settings  - supported, works on every build'
+  if ($hasFlows)  { Write-Host '  2  Reset this PC, direct       - straight into the flow (undocumented)' }
+  if ($hasLegacy) { Write-Host '  3  Factory image               - back to the OEM build, if there is one' }
+  Write-Host '  4  Advanced Startup            - Troubleshoot, Startup Repair, USB boot, firmware'
   Write-Host '  Q  Nothing, get me out of here'
   Write-Host ''
   $pick = (Read-Host 'Which').Trim().ToUpper()
 
   switch ($pick) {
-    '1' { Write-Host 'Opening Reset this PC...' -ForegroundColor Cyan; systemreset }
-    '2' { Write-Host 'Opening the factory reset path...' -ForegroundColor Cyan; systemreset -factoryreset }
+    '1' {
+      Write-Host 'Opening Settings at Recovery...' -ForegroundColor Cyan
+      Start-Process 'ms-settings:recovery'
+      Write-Host 'Reset this PC is the first button on that page.'
+    }
+    '2' {
+      if (-not $hasFlows) { Write-Host 'Not available on this machine.' -ForegroundColor Red; break }
+      Write-Host 'Opening the reset flow directly...' -ForegroundColor Cyan
+      Start-Process $flows -ArgumentList 'FeaturedResetPC'
+      Write-Host 'This entry point is undocumented. If it does nothing, use option 1.' -ForegroundColor DarkGray
+    }
     '3' {
+      if (-not $hasLegacy) { Write-Host 'Not available on this build.' -ForegroundColor Red; break }
+      Write-Host 'Opening the factory reset path...' -ForegroundColor Cyan
+      & $legacy -factoryreset
+    }
+    '4' {
       Write-Host 'Restarting into Advanced Startup in 10 seconds. Cancel with: shutdown /a' -ForegroundColor Yellow
       shutdown /r /o /t 10
     }
@@ -3264,7 +3300,7 @@ function Start-Reset {
 Start-Reset`);
 
 S('reset-unattended','rebuild','Wipe with nobody at the keyboard',['admin','changes','risk'],
-'The mechanism behind the Wipe button in Intune, driven locally. It is the <span class="mono">MDM_RemoteWipe</span> class in the <span class="mono">root\\CIMv2\\MDM\\DMMap</span> namespace, and it needs no console session, no wizard and no tenant.<br><br><b>It reports and does nothing by default.</b> To make it act you have to name the mode <i>and</i> type this machine’s own name back at it, because a wipe that fires the moment you paste it is not a tool, it is an accident waiting for a Tuesday.<br><br><b>The four modes are not interchangeable:</b><br><span class="mono">-Mode Wipe</span> - the standard wipe.<br><span class="mono">-Mode KeepUserData</span> - resets Windows but keeps user accounts and data.<br><span class="mono">-Mode PersistProvisioned</span> - keeps provisioning data and reapplies it afterwards, the Autopilot-style reset.<br><span class="mono">-Mode Protected</span> - survives being interrupted and fully cleans the drive. <b>Microsoft’s own documentation warns this can leave some configurations unable to boot.</b> For a machine leaving the building, not one coming back.<br><br><b>It has to run as SYSTEM</b>, not merely elevated - Microsoft’s docs reach for PsExec here. This does it with a scheduled task using a SYSTEM principal instead, so nothing gets downloaded and the no-binaries rule holds.',
+'The mechanism behind the Wipe button in Intune, driven locally: the <span class="mono">MDM_RemoteWipe</span> class in <span class="mono">root\\CIMv2\\MDM\\DMMap</span>. No console session, no wizard, no tenant. Since systemreset went in 24H2 it is the only documented way to start a reset from a script rather than a screen.<br><br>It reports by default. Acting needs a mode, this machine’s name typed back, then the word WIPE. The name is in the report but never printed as a runnable line.<br><br><span class="mono">-Mode Wipe</span> - standard wipe.<br><span class="mono">-Mode KeepUserData</span> - resets Windows, keeps accounts and data.<br><span class="mono">-Mode PersistProvisioned</span> - keeps provisioning and reapplies it, the Autopilot-style reset.<br><span class="mono">-Mode Protected</span> - survives interruption and fully cleans the drive. <b>Microsoft warns it can leave some configurations unable to boot.</b> For a machine leaving the building, not one coming back.<br><br>It needs SYSTEM, not merely elevation. Microsoft’s docs use PsExec; this uses a scheduled task with a SYSTEM principal, so nothing is downloaded.',
 String.raw`
 function Start-DeviceWipe {
   param(
@@ -3302,7 +3338,7 @@ function Start-DeviceWipe {
     Write-Host ''
     Write-Host 'Reported only. Nothing has been started.' -ForegroundColor Cyan
     Write-Host 'To actually wipe, name the mode and confirm the machine by name:'
-    Write-Host ('  Start-DeviceWipe -Mode Wipe -ConfirmName {0}' -f $env:COMPUTERNAME)
+    Write-Host '  Start-DeviceWipe -Mode Wipe -ConfirmName <the Machine name above>'
     Write-Host ''
     Write-Host '  Wipe                standard wipe'
     Write-Host '  KeepUserData        reset Windows, keep accounts and data'
@@ -3314,8 +3350,7 @@ function Start-DeviceWipe {
   if ($ConfirmName -ne $env:COMPUTERNAME) {
     Write-Host ''
     Write-Host 'Not confirmed. Nothing done.' -ForegroundColor Yellow
-    Write-Host ('-ConfirmName has to be exactly  {0}  - the machine you are stood at.' -f $env:COMPUTERNAME)
-    Write-Host 'Typing it is the point. It is the step that catches the wrong window.'
+    Write-Host 'That is not this machine. The name is on the Machine line above.'
     return
   }
 
@@ -3326,9 +3361,6 @@ function Start-DeviceWipe {
   $sure = (Read-Host 'Type WIPE to go ahead').Trim()
   if ($sure -ne 'WIPE') { Write-Host 'Stopped.' -ForegroundColor Green; return }
 
-  # The class refuses anything short of SYSTEM. A scheduled task with a SYSTEM
-  # principal gets there without PsExec. S-1-5-18 rather than the name, which
-  # is localised.
   $path = Join-Path $env:SystemRoot 'Temp\deskside-wipe.ps1'
   $body = '$i = Get-CimInstance -Namespace "root\cimv2\mdm\dmmap" -ClassName MDM_RemoteWipe | Select-Object -First 1' + [Environment]::NewLine +
           'Invoke-CimMethod -InputObject $i -MethodName "' + $m + '" -Arguments @{ param = "" }'
@@ -3354,7 +3386,7 @@ function Start-DeviceWipe {
 Start-DeviceWipe`);
 
 S('boot-advanced','rebuild','Restart into recovery or Advanced Startup',['admin','changes'],
-'Two ways to the blue Troubleshoot screen without hammering F11 and hoping. <span class="mono">shutdown /r /o</span> is the ordinary one. <span class="mono">reagentc /boottore</span> arms the next restart to go straight into WinRE, which is the one that still works when the shutdown route does not.<br><br><b>BitLocker will ask for the recovery key</b> on the way in, on most encrypted machines. This suspends protection for exactly one reboot so it does not, which is the difference between a two-minute job and phoning someone for a 48-digit number. Protection comes back on by itself afterwards - that is what <span class="mono">-RebootCount 1</span> means.<br><br>You get ten seconds to change your mind, and it prints how.',
+'<span class="mono">shutdown /r /o</span> is the ordinary route. <span class="mono">reagentc /boottore</span> arms the next restart to go straight into WinRE, and still works when the first one does not.<br><br>Most encrypted machines ask for the BitLocker recovery key on the way in. This suspends protection for one reboot so it does not; <span class="mono">-RebootCount 1</span> means protection comes back on by itself afterwards.',
 String.raw`
 function Start-Recovery {
   param([switch] $ViaWinRE)
@@ -3382,7 +3414,7 @@ function Start-Recovery {
 Start-Recovery`);
 
 S('boot-safe','rebuild','Safe mode, and the way back out',['admin','changes','risk'],
-'Sets the machine to boot into Safe Mode, and - the half people forget - tells you how to undo it from inside Safe Mode. Set it without knowing the way back and you have made a machine that boots into Safe Mode forever, which is a worse problem than the one you started with.<br><br><span class="mono">-Mode Network</span> keeps networking, for anything you need to download or reach a server for. <span class="mono">-Mode Off</span> clears it. It does not restart on its own; it tells you what to run when you are ready.<br><br>Note the quotes around <span class="mono">"{current}"</span>. Without them PowerShell reads the braces as a script block and bcdedit never sees the argument. That one costs people twenty minutes.<br><br>BitLocker is suspended for a single reboot, because changing the boot configuration is exactly the sort of thing that triggers a recovery prompt.',
+'Sets Safe Mode for the next boot, and prints how to undo it from inside Safe Mode - without that you have a machine that boots into Safe Mode every time.<br><br><span class="mono">-Mode Network</span> keeps networking, <span class="mono">-Mode Off</span> clears it. It does not restart on its own.<br><br>The quotes around <span class="mono">"{current}"</span> matter: unquoted, PowerShell reads the braces as a script block and bcdedit never sees the argument.<br><br>BitLocker is suspended for one reboot, because changing the boot configuration can trigger a recovery prompt.',
 String.raw`
 function Set-SafeBoot {
   param(
@@ -3426,7 +3458,7 @@ function Set-SafeBoot {
 Set-SafeBoot`);
 
 S('sysprep-handover','rebuild','Generalise a machine for somebody else',['admin','changes','risk'],
-'For a spare being passed on rather than wiped: <span class="mono">sysprep /generalize /oobe</span> strips the machine SID, the event logs and the restore points, and leaves it shutting down at the out-of-box setup screen, as if it had just come out of the carton.<br><br><b>It reports by default and needs <span class="mono">-Run</span> to act</b>, because the checks below are the ones that make it fail, and sysprep failing halfway leaves a machine that will not sysprep again.<br><br><b>What actually goes wrong:</b> a provisioned Store app updated for one user is the classic - sysprep stops with a fatal error and the reason is only in the log, which this points you at. Windows can also only be generalised a limited number of times; the remaining count is in <span class="mono">slmgr /dlv</span> and this reads it for you.<br><br><b>Do not sysprep an Entra-joined or Autopilot machine</b> that is still enrolled. Remove it from the tenant first, or you leave a ghost record and a device that argues with itself about who it is.',
+'<span class="mono">sysprep /generalize /oobe</span> strips the machine SID, the event logs and the restore points, and shuts down at the out-of-box screen. For a spare being passed on rather than wiped.<br><br>It reports by default and needs <span class="mono">-Run</span> to act, because a sysprep that fails halfway leaves a machine that will not sysprep again.<br><br><b>What fails it:</b> a provisioned Store app updated for one user, which stops it with a fatal error whose reason is only in <span class="mono">Sysprep\\Panther\\setupact.log</span>. Windows can also only be generalised a limited number of times, and the remaining count is in <span class="mono">slmgr /dlv</span>.<br><br><b>Not on a machine still enrolled in Entra or Autopilot.</b> Remove it from the tenant first, or you leave a ghost record behind.',
 String.raw`
 function Invoke-Handover {
   param([switch] $Run)

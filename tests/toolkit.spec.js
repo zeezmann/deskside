@@ -147,3 +147,64 @@ test.describe('the toolkit itself', () => {
     expect(problems).toEqual([]);
   });
 });
+
+/**
+ * Descriptions are reference material for somebody standing at a desk with a
+ * user waiting. Every sentence has to be a fact, a gotcha, or something that
+ * changes what they do next. The failure mode is drift: a script gets written,
+ * the reasoning behind it gets written down next to it, and what was a
+ * description becomes an essay.
+ */
+test.describe('descriptions stay information, not commentary', () => {
+  const read = page => page.evaluate(() => SCRIPTS.map(s => ({
+    id: s.id,
+    text: s.desc.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+  })));
+
+  test('none has grown into an essay', async ({ page }) => {
+    const problems = [];
+    await open(page, problems);
+    const all = await read(page);
+    // The two longest are reference lists - four wipe modes, a set of key
+    // bindings - which is length doing work. Past this it is padding.
+    const essays = all.filter(d => d.text.length > 1100).map(d => `${d.id} (${d.text.length})`);
+    expect(essays).toEqual([]);
+
+    const mean = all.reduce((n, d) => n + d.text.length, 0) / all.length;
+    expect(mean).toBeLessThan(260);
+    expect(problems).toEqual([]);
+  });
+
+  test('none talks to the reader about how this page got written', async ({ page }) => {
+    const problems = [];
+    await open(page, problems);
+    const all = await read(page);
+    // "you asked for presence to be the rule" was in here - written to one
+    // person in a conversation, read by everybody else as nonsense.
+    const patterns = [
+      /\byou asked\b/i,
+      /\bas (you|we) (discussed|agreed)\b/i,
+      /\bI (wrote|added|removed|decided)\b/,
+    ];
+    const chatty = all.filter(d => patterns.some(p => p.test(d.text))).map(d => d.id);
+    expect(chatty).toEqual([]);
+    expect(problems).toEqual([]);
+  });
+
+  test('none walks the reader through opening a terminal', async ({ page }) => {
+    const problems = [];
+    await open(page, problems);
+    const all = await read(page);
+    // The audience already knows how to paste into a console. Telling them
+    // burns the attention needed for the part that is actually surprising.
+    const patterns = [
+      /\bwalk up to the machine\b/i,
+      /\bopen (an elevated|a) powershell,? (and )?paste\b/i,
+      /\brun it, read it\b/i,
+      /\bso you can see exactly what it would\b/i,
+    ];
+    const babied = all.filter(d => patterns.some(p => p.test(d.text))).map(d => d.id);
+    expect(babied).toEqual([]);
+    expect(problems).toEqual([]);
+  });
+});
