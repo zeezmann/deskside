@@ -16,8 +16,8 @@ because the guide you will want most is the one titled *No internet*.
 
 | | |
 |---|---|
-| **179 scripts** | PowerShell, macOS and Linux, each with a plain-English description of what it does and when it lies to you |
-| **30 fix-it guides** | Numbered steps in the order an experienced engineer would actually work them |
+| **186 scripts** | PowerShell, macOS and Linux, each with a plain-English description of what it does and when it lies to you |
+| **31 fix-it guides** | Numbered steps in the order an experienced engineer would actually work them |
 | **9 utilities** | Subnet calculator, password generator, file checksum, CSV inspector, error code decoder, text comparison, Windows build lookup, paste cleaner, diagram viewer |
 | **35 run-box shortcuts** | The `.msc` and `.cpl` list, click to copy |
 
@@ -143,7 +143,7 @@ npx playwright install chromium
 npm test
 ```
 
-60 tests, run on every push. They cover the things that would quietly rot:
+76 tests, run on every push. They cover the things that would quietly rot:
 
 - the file loads with **zero external requests** — the offline promise, enforced
 - every script is reachable from a guide, and no guide points at a script that does not exist
@@ -153,6 +153,9 @@ npm test
   did not, and quietly offered Microsoft scripts on a Google-only estate
 - the Windows version table's stated coverage matches its newest row, and no
   version's support ends before it shipped
+- **no fill-in default names anything that exists on a real machine** — a box
+  you forgot to change has to make the script miss, not make it work
+- wiping the browser removes everything this site stored and nothing else
 - **seven screen sizes from 360px to 1024px, across nine views, with zero
   horizontal overflow** — one grid property once cost 720px of sideways scroll on
   a phone and nothing on a laptop, so this is now asserted rather than eyeballed

@@ -406,6 +406,12 @@ table.runs{width:100%;min-width:340px;border-collapse:separate;border-spacing:0;
 .panel p{margin:0 0 13px;color:var(--ink2);max-width:80ch}
 .panel p:last-child{margin-bottom:0}
 .panel b{color:var(--ink);font-weight:650}
+.warn-panel{margin-top:20px;background:var(--amber-soft);border-color:var(--amber-line)}
+.warn-panel h3{margin:0 0 11px;font-size:16px;color:var(--ink)}
+.warn-panel p{font-size:14.5px;line-height:1.65}
+.ghostbtn.danger{margin-top:15px;border-color:var(--red-line);color:var(--red);
+  background:var(--surface)}
+.ghostbtn.danger:hover{border-color:var(--red);background:var(--red-soft);color:var(--red)}
 .notes-row{display:flex;gap:8px;margin-bottom:11px;flex-wrap:wrap}
 textarea#notes{width:100%;min-height:400px;border:1px solid var(--border);border-radius:11px;
   padding:14px 16px;background:var(--sunk);font-family:var(--mono);font-size:13px;resize:vertical;outline:none}
@@ -698,9 +704,20 @@ textarea#notes:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accen
    Badges: admin, changes, remote, rsat, net, cmd
    ============================================================ */
 
+/* Every default here has to fail if somebody forgets to change it, because
+   forgetting is the normal case when you are stood at somebody else's desk.
+
+   PC-NAME does not resolve. 203.0.113.10 is the RFC 5737 documentation range
+   and is not routable. USER-NAME and SERVICE-NAME match no account and no unit.
+   The file is not in Public Downloads. "Chrome" is not a winget package id, so
+   an uninstall with -e matches nothing - the id is Google.Chrome.
+
+   SERVICE used to default to nginx, which is not a placeholder: it is the most
+   deployed web server there is. The restart script would have found it and
+   restarted it. wermgr stays because nothing destructive takes a process. */
 const DEFAULTS = {
-  COMPUTER:'PC-NAME', IP:'203.0.113.10', USER:'jsmith', PROCESS:'wermgr',
-  APP:'Chrome', FILE:'C:\\Users\\Public\\Downloads\\file.exe', SERVICE:'nginx'
+  COMPUTER:'PC-NAME', IP:'203.0.113.10', USER:'USER-NAME', PROCESS:'wermgr',
+  APP:'Chrome', FILE:'C:\\Users\\Public\\Downloads\\file.exe', SERVICE:'SERVICE-NAME'
 };
 
 const CATS = [
@@ -717,7 +734,8 @@ const CATS = [
   {id:'remote',   name:'Remote admin'},
   {id:'hardware', name:'Hardware & drivers'},
   {id:'updates',  name:'Windows Update'},
-  {id:'print',    name:'Printing'}
+  {id:'print',    name:'Printing'},
+  {id:'rebuild',  name:'Rebuild & recovery'}
 ];
 
 const SCRIPTS = [];
@@ -3070,7 +3088,431 @@ ls -lh "$out"
 echo
 echo "Copy it off with:  scp $(whoami)@$(hostname -s):$out ."`);
 
+
+/* ---------------- REBUILD & RECOVERY ----------------
+   The end of a machine's life on somebody's desk. Everything here either
+   destroys the machine or decides whether destroying it will work, so the
+   order matters: check the recovery environment is there, capture what you
+   cannot get back, then reset. */
+
+S('winre-check','rebuild','Will a reset actually work on this machine?',['admin'],
+'<b>Run this before you promise anybody a reset.</b> Reset this PC, Advanced Startup and Troubleshoot all boot into the recovery environment, and on a surprising number of machines it is switched off or the image is gone - usually after a disk was cloned, a partition was tidied up, or a WinRE update failed for want of space.<br><br>The failure you get otherwise is <span class="mono">Could not find the recovery environment</span>, after the user has already agreed to lose everything. Two minutes here saves that conversation.<br><br>The recovery partition has no drive letter, so its free space cannot be read without mounting it. A partition well under 1 GB is where the WinRE servicing failures come from.',
+String.raw`
+$raw = reagentc /info 2>&1 | Out-String
+Write-Host $raw -ForegroundColor Gray
+
+if ($raw -match 'Enabled') {
+  Write-Host 'WinRE is enabled. Reset this PC and Advanced Startup will work.' -ForegroundColor Green
+} else {
+  Write-Host 'WinRE is NOT enabled on this machine.' -ForegroundColor Red
+  Write-Host '  Reset this PC will fail with "Could not find the recovery environment".'
+  Write-Host '  Try:  reagentc /enable'
+  Write-Host '  If that fails, winre.wim has gone and the machine needs reinstalling from'
+  Write-Host '  media instead. Say so on the ticket before anybody agrees to a reset.'
+}
+Write-Host '(That wording is localised - on a non-English build, read the status line yourself.)' -ForegroundColor DarkGray
+
+Write-Host ''
+Write-Host '--- recovery partitions ---' -ForegroundColor Cyan
+$rec = Get-Partition -ErrorAction SilentlyContinue |
+       Where-Object { $_.Type -eq 'Recovery' -or $_.GptType -eq '{de94bba4-06d1-4d40-a16a-bfd50179d6ac}' }
+if ($rec) {
+  $rec | ForEach-Object {
+    Write-Host ('  disk {0} partition {1}: {2} MB' -f $_.DiskNumber, $_.PartitionNumber, [int]($_.Size / 1MB))
+  }
+} else {
+  Write-Host '  none found - WinRE may be living on the Windows partition instead, which is fine'
+}
+
+Write-Host ''
+Write-Host '--- BitLocker, because recovery will ask for the key ---' -ForegroundColor Cyan
+Get-BitLockerVolume -ErrorAction SilentlyContinue |
+  Where-Object { $_.ProtectionStatus -eq 'On' } |
+  Select-Object MountPoint, VolumeStatus, ProtectionStatus |
+  Format-Table -AutoSize
+Write-Host 'Any volume listed above means you need the recovery key to hand before you reboot into recovery.'`);
+
+S('before-wipe','rebuild','Capture everything before you wipe',['admin'],
+'The things you cannot get back afterwards, on one screen, in the order you will wish you had them. Run it, read it, put it on the ticket, <i>then</i> reset.<br><br>It covers the machine identity and serial for the asset record, the Windows edition and how it is licensed, whether the OEM key is in firmware (it is, on anything modern, and it reactivates by itself), the join state, the BitLocker recovery key, every local profile with its size, and whether OneDrive or Drive is actually finished syncing.<br><br><b>On the recovery key.</b> This prints it. Do not paste it into a ticket - put it where your passwords live, and if the machine is Entra-joined back it up properly with the command shown rather than trusting that somebody did.<br><br>"They said everything is in the cloud" is not a check. The profile sizes below are.',
+String.raw`
+$cs = Get-CimInstance Win32_ComputerSystem
+$bi = Get-CimInstance Win32_BIOS
+$os = Get-CimInstance Win32_OperatingSystem
+
+Write-Host ''
+Write-Host '=== MACHINE ===' -ForegroundColor Cyan
+Write-Host ('  Name         : {0}' -f $env:COMPUTERNAME)
+Write-Host ('  Maker, model : {0} {1}' -f $cs.Manufacturer, $cs.Model)
+Write-Host ('  Serial       : {0}' -f $bi.SerialNumber)
+Write-Host ('  Signed in    : {0}' -f $cs.UserName)
+
+Write-Host ''
+Write-Host '=== WINDOWS ===' -ForegroundColor Cyan
+Write-Host ('  Edition      : {0}' -f $os.Caption)
+Write-Host ('  Build        : {0}' -f $os.BuildNumber)
+Write-Host ('  Installed    : {0}' -f $os.InstallDate)
+
+$lic = Get-CimInstance SoftwareLicensingProduct -Filter "PartialProductKey IS NOT NULL AND Name LIKE 'Windows%'" -ErrorAction SilentlyContinue |
+       Select-Object -First 1
+if ($lic) { Write-Host ('  Licence      : channel {0}, status {1}' -f $lic.ProductKeyChannel, $lic.LicenseStatus) }
+$oem = (Get-CimInstance SoftwareLicensingService -ErrorAction SilentlyContinue).OA3xOriginalProductKey
+if ($oem) { Write-Host '  OEM key      : present in firmware, so it will reactivate itself after a wipe' -ForegroundColor Green }
+else      { Write-Host '  OEM key      : none in firmware - check how this one is licensed before you wipe' -ForegroundColor Yellow }
+
+Write-Host ''
+Write-Host '=== JOIN STATE ===' -ForegroundColor Cyan
+Write-Host ('  Domain joined: {0}' -f $cs.PartOfDomain)
+if ($cs.PartOfDomain) { Write-Host ('  Domain       : {0}' -f $cs.Domain) }
+$ds = dsregcmd /status 2>&1 | Out-String
+($ds -split '\r?\n') | Where-Object { $_ -match 'AzureAdJoined|DomainJoined|WorkplaceJoined|TenantName' } |
+  ForEach-Object { Write-Host ('  ' + $_.Trim()) }
+
+Write-Host ''
+Write-Host '=== BITLOCKER RECOVERY KEY ===' -ForegroundColor Cyan
+$bl = Get-BitLockerVolume -ErrorAction SilentlyContinue | Where-Object { $_.ProtectionStatus -eq 'On' }
+if (-not $bl) {
+  Write-Host '  Not encrypted. Nothing to recover, nothing to lose.'
+} else {
+  foreach ($v in $bl) {
+    foreach ($p in $v.KeyProtector) {
+      if ($p.KeyProtectorType -eq 'RecoveryPassword') {
+        Write-Host ('  {0}  id {1}' -f $v.MountPoint, $p.KeyProtectorId) -ForegroundColor Yellow
+        Write-Host ('      {0}' -f $p.RecoveryPassword) -ForegroundColor Yellow
+        Write-Host '      Back it up to Entra rather than trusting it is there:'
+        Write-Host ('      BackupToAAD-BitLockerKeyProtector -MountPoint {0} -KeyProtectorId "{1}"' -f $v.MountPoint, $p.KeyProtectorId)
+        Write-Host ('      Or to AD:  Backup-BitLockerKeyProtector -MountPoint {0} -KeyProtectorId "{1}"' -f $v.MountPoint, $p.KeyProtectorId)
+      }
+    }
+  }
+  Write-Host '  Do not paste the key above into a ticket. Put it where your passwords live.' -ForegroundColor Red
+}
+
+Write-Host ''
+Write-Host '=== WHAT IS ON THE DISK ===' -ForegroundColor Cyan
+Get-CimInstance Win32_UserProfile -Filter 'Special = False' | ForEach-Object {
+  $p = $_.LocalPath
+  if ($p -and (Test-Path $p)) {
+    $mb = [int](((Get-ChildItem $p -Recurse -File -Force -ErrorAction SilentlyContinue |
+                   Measure-Object Length -Sum).Sum) / 1MB)
+    Write-Host ('  {0,-34} {1,8} MB' -f $p, $mb)
+  }
+}
+
+Write-Host ''
+Write-Host '=== IS IT ACTUALLY SYNCED ===' -ForegroundColor Cyan
+$found = $false
+$roots = @("$env:USERPROFILE\OneDrive",
+           "$env:USERPROFILE\OneDrive - $($cs.Domain)",
+           "$env:USERPROFILE\Google Drive",
+           "$env:USERPROFILE\My Drive")
+foreach ($d in $roots) {
+  if (Test-Path $d) { $found = $true; Write-Host ('  sync folder: {0}' -f $d) }
+}
+Get-Process OneDrive, GoogleDriveFS -ErrorAction SilentlyContinue |
+  Select-Object -Unique Name | ForEach-Object { $found = $true; Write-Host ('  running    : {0}' -f $_.Name) }
+if (-not $found) { Write-Host '  Nothing syncing that this can see. Their files are local only.' -ForegroundColor Red }
+Write-Host ''
+Write-Host 'Check the sync client says "up to date" on screen. A running process is not the same'
+Write-Host 'as a finished upload, and a 40 GB Desktop is not going to finish while you wait.'`);
+
+S('reset-attended','rebuild','Reset this PC, with somebody at the keyboard',['admin','changes','risk'],
+'The supported route, and the one to use whenever there is a human present. It opens the Reset this PC wizard, where <b>Keep my files</b> and <b>Remove everything</b> are chosen on screen by whoever owns the consequences.<br><br>Three ways in, and this asks which you want:<br><b>1. Reset this PC</b> - <span class="mono">systemreset</span>, the ordinary wizard.<br><b>2. Factory image</b> - <span class="mono">systemreset -factoryreset</span>, back to the OEM build where the machine still has one. Not every machine does.<br><b>3. Advanced Startup</b> - <span class="mono">shutdown /r /o /t 0</span>, for Troubleshoot, Startup Repair, a USB boot or firmware settings.<br><br><b>Microsoft does not document the systemreset switches</b> and there is no supported silent mode. Anything claiming otherwise is guessing. If you need it to run with nobody there, that is the other script, and it is a completely different mechanism.<br><br>It checks WinRE is present first, because without it all three of these fail.',
+String.raw`
+function Start-Reset {
+  $admin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
+           ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+  if (-not $admin) {
+    Write-Host 'This needs an elevated PowerShell.' -ForegroundColor Red
+    return
+  }
+
+  $re = reagentc /info 2>&1 | Out-String
+  if ($re -notmatch 'Enabled') {
+    Write-Host 'WinRE is not enabled on this machine, so none of these will work.' -ForegroundColor Red
+    Write-Host 'Run the "Will a reset actually work" script first.'
+    return
+  }
+  Write-Host 'WinRE is present.' -ForegroundColor Green
+
+  $bl = Get-BitLockerVolume -ErrorAction SilentlyContinue | Where-Object { $_.ProtectionStatus -eq 'On' }
+  if ($bl) {
+    Write-Host ''
+    Write-Host 'BitLocker is on. Have the recovery key in front of you before you continue.' -ForegroundColor Yellow
+  }
+
+  Write-Host ''
+  Write-Host 'Before you go any further: has the user actually confirmed what they lose?' -ForegroundColor Yellow
+  Write-Host ''
+  Write-Host '  1  Reset this PC          - the wizard, keep files or remove everything'
+  Write-Host '  2  Factory image          - back to the OEM build, if this machine has one'
+  Write-Host '  3  Advanced Startup       - Troubleshoot, Startup Repair, USB boot, firmware'
+  Write-Host '  Q  Nothing, get me out of here'
+  Write-Host ''
+  $pick = (Read-Host 'Which').Trim().ToUpper()
+
+  switch ($pick) {
+    '1' { Write-Host 'Opening Reset this PC...' -ForegroundColor Cyan; systemreset }
+    '2' { Write-Host 'Opening the factory reset path...' -ForegroundColor Cyan; systemreset -factoryreset }
+    '3' {
+      Write-Host 'Restarting into Advanced Startup in 10 seconds. Cancel with: shutdown /a' -ForegroundColor Yellow
+      shutdown /r /o /t 10
+    }
+    default { Write-Host 'Nothing done.' -ForegroundColor Green }
+  }
+}
+
+Start-Reset`);
+
+S('reset-unattended','rebuild','Wipe with nobody at the keyboard',['admin','changes','risk'],
+'The mechanism behind the Wipe button in Intune, driven locally. It is the <span class="mono">MDM_RemoteWipe</span> class in the <span class="mono">root\\CIMv2\\MDM\\DMMap</span> namespace, and it needs no console session, no wizard and no tenant.<br><br><b>It reports and does nothing by default.</b> To make it act you have to name the mode <i>and</i> type this machine’s own name back at it, because a wipe that fires the moment you paste it is not a tool, it is an accident waiting for a Tuesday.<br><br><b>The four modes are not interchangeable:</b><br><span class="mono">-Mode Wipe</span> - the standard wipe.<br><span class="mono">-Mode KeepUserData</span> - resets Windows but keeps user accounts and data.<br><span class="mono">-Mode PersistProvisioned</span> - keeps provisioning data and reapplies it afterwards, the Autopilot-style reset.<br><span class="mono">-Mode Protected</span> - survives being interrupted and fully cleans the drive. <b>Microsoft’s own documentation warns this can leave some configurations unable to boot.</b> For a machine leaving the building, not one coming back.<br><br><b>It has to run as SYSTEM</b>, not merely elevated - Microsoft’s docs reach for PsExec here. This does it with a scheduled task using a SYSTEM principal instead, so nothing gets downloaded and the no-binaries rule holds.',
+String.raw`
+function Start-DeviceWipe {
+  param(
+    [ValidateSet('Report','Wipe','KeepUserData','PersistProvisioned','Protected')]
+    [string] $Mode = 'Report',
+    [string] $ConfirmName = ''
+  )
+
+  $METHOD = @{
+    Wipe               = 'doWipeMethod'
+    KeepUserData       = 'doWipePersistUserDataMethod'
+    PersistProvisioned = 'doWipePersistProvisionedDataMethod'
+    Protected          = 'doWipeProtectedMethod'
+  }
+
+  $admin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
+           ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+  if (-not $admin) { Write-Host 'Needs an elevated PowerShell.' -ForegroundColor Red; return }
+
+  $ns = 'root\cimv2\mdm\dmmap'
+  $inst = Get-CimInstance -Namespace $ns -ClassName MDM_RemoteWipe -ErrorAction SilentlyContinue |
+          Select-Object -First 1
+
+  Write-Host ''
+  Write-Host ('Machine      : {0}' -f $env:COMPUTERNAME) -ForegroundColor Cyan
+  Write-Host ('Serial       : {0}' -f (Get-CimInstance Win32_BIOS).SerialNumber)
+  if ($inst) { Write-Host 'Wipe class   : present' -ForegroundColor Green }
+  else {
+    Write-Host 'Wipe class   : NOT present on this build' -ForegroundColor Red
+    Write-Host '  Nothing here will work. Use the attended reset instead.'
+    return
+  }
+
+  if ($Mode -eq 'Report') {
+    Write-Host ''
+    Write-Host 'Reported only. Nothing has been started.' -ForegroundColor Cyan
+    Write-Host 'To actually wipe, name the mode and confirm the machine by name:'
+    Write-Host ('  Start-DeviceWipe -Mode Wipe -ConfirmName {0}' -f $env:COMPUTERNAME)
+    Write-Host ''
+    Write-Host '  Wipe                standard wipe'
+    Write-Host '  KeepUserData        reset Windows, keep accounts and data'
+    Write-Host '  PersistProvisioned  keep provisioning and reapply it afterwards'
+    Write-Host '  Protected           resilient, fully cleans the drive, can leave it unbootable'
+    return
+  }
+
+  if ($ConfirmName -ne $env:COMPUTERNAME) {
+    Write-Host ''
+    Write-Host 'Not confirmed. Nothing done.' -ForegroundColor Yellow
+    Write-Host ('-ConfirmName has to be exactly  {0}  - the machine you are stood at.' -f $env:COMPUTERNAME)
+    Write-Host 'Typing it is the point. It is the step that catches the wrong window.'
+    return
+  }
+
+  $m = $METHOD[$Mode]
+  Write-Host ''
+  Write-Host ('About to call {0} on {1}.' -f $m, $env:COMPUTERNAME) -ForegroundColor Red
+  Write-Host 'There is no undo and no progress bar. The machine reboots into the wipe.' -ForegroundColor Red
+  $sure = (Read-Host 'Type WIPE to go ahead').Trim()
+  if ($sure -ne 'WIPE') { Write-Host 'Stopped.' -ForegroundColor Green; return }
+
+  # The class refuses anything short of SYSTEM. A scheduled task with a SYSTEM
+  # principal gets there without PsExec. S-1-5-18 rather than the name, which
+  # is localised.
+  $path = Join-Path $env:SystemRoot 'Temp\deskside-wipe.ps1'
+  $body = '$i = Get-CimInstance -Namespace "root\cimv2\mdm\dmmap" -ClassName MDM_RemoteWipe | Select-Object -First 1' + [Environment]::NewLine +
+          'Invoke-CimMethod -InputObject $i -MethodName "' + $m + '" -Arguments @{ param = "" }'
+  Set-Content -Path $path -Value $body -Encoding ASCII -Force
+
+  $task = 'Deskside-RemoteWipe'
+  $arg  = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $path + '"'
+  $act  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arg
+  $pri  = New-ScheduledTaskPrincipal -UserId 'S-1-5-18' -LogonType ServiceAccount -RunLevel Highest
+  Register-ScheduledTask -TaskName $task -Action $act -Principal $pri -Force | Out-Null
+  Start-ScheduledTask -TaskName $task
+
+  Write-Host ''
+  Write-Host ('Started as SYSTEM via scheduled task "{0}".' -f $task) -ForegroundColor Yellow
+  Write-Host 'The machine should reboot into the wipe within a minute or so.'
+  Write-Host ''
+  Write-Host 'If it does not, the call failed and both of these are still sitting there:'
+  Write-Host ('  {0}' -f $path)
+  Write-Host ('  Unregister-ScheduledTask -TaskName {0} -Confirm:$false' -f $task)
+  Write-Host 'Clean them up before you walk away, and put the serial on the ticket.'
+}
+
+Start-DeviceWipe`);
+
+S('boot-advanced','rebuild','Restart into recovery or Advanced Startup',['admin','changes'],
+'Two ways to the blue Troubleshoot screen without hammering F11 and hoping. <span class="mono">shutdown /r /o</span> is the ordinary one. <span class="mono">reagentc /boottore</span> arms the next restart to go straight into WinRE, which is the one that still works when the shutdown route does not.<br><br><b>BitLocker will ask for the recovery key</b> on the way in, on most encrypted machines. This suspends protection for exactly one reboot so it does not, which is the difference between a two-minute job and phoning someone for a 48-digit number. Protection comes back on by itself afterwards - that is what <span class="mono">-RebootCount 1</span> means.<br><br>You get ten seconds to change your mind, and it prints how.',
+String.raw`
+function Start-Recovery {
+  param([switch] $ViaWinRE)
+
+  $admin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
+           ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+  if (-not $admin) { Write-Host 'Needs an elevated PowerShell.' -ForegroundColor Red; return }
+
+  Get-BitLockerVolume -ErrorAction SilentlyContinue |
+    Where-Object { $_.ProtectionStatus -eq 'On' } |
+    ForEach-Object {
+      Suspend-BitLocker -MountPoint $_.MountPoint -RebootCount 1 -ErrorAction SilentlyContinue | Out-Null
+      Write-Host ('BitLocker suspended for one reboot on {0}' -f $_.MountPoint) -ForegroundColor Green
+    }
+
+  if ($ViaWinRE) {
+    reagentc /boottore
+    Write-Host 'Next restart goes straight into WinRE.' -ForegroundColor Cyan
+  }
+
+  Write-Host 'Restarting in 10 seconds. Changed your mind:  shutdown /a' -ForegroundColor Yellow
+  if ($ViaWinRE) { shutdown /r /t 10 } else { shutdown /r /o /t 10 }
+}
+
+Start-Recovery`);
+
+S('boot-safe','rebuild','Safe mode, and the way back out',['admin','changes','risk'],
+'Sets the machine to boot into Safe Mode, and - the half people forget - tells you how to undo it from inside Safe Mode. Set it without knowing the way back and you have made a machine that boots into Safe Mode forever, which is a worse problem than the one you started with.<br><br><span class="mono">-Mode Network</span> keeps networking, for anything you need to download or reach a server for. <span class="mono">-Mode Off</span> clears it. It does not restart on its own; it tells you what to run when you are ready.<br><br>Note the quotes around <span class="mono">"{current}"</span>. Without them PowerShell reads the braces as a script block and bcdedit never sees the argument. That one costs people twenty minutes.<br><br>BitLocker is suspended for a single reboot, because changing the boot configuration is exactly the sort of thing that triggers a recovery prompt.',
+String.raw`
+function Set-SafeBoot {
+  param(
+    [ValidateSet('Minimal','Network','Off')]
+    [string] $Mode = 'Minimal'
+  )
+
+  $admin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
+           ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+  if (-not $admin) { Write-Host 'Needs an elevated PowerShell.' -ForegroundColor Red; return }
+
+  if ($Mode -eq 'Off') {
+    bcdedit /deletevalue "{current}" safeboot
+    Write-Host 'Safe mode cleared. The next restart is a normal one.' -ForegroundColor Green
+  } else {
+    $arg = $Mode.ToLower()
+    if ($arg -eq 'minimal') { bcdedit /set "{current}" safeboot minimal }
+    else                    { bcdedit /set "{current}" safeboot network }
+
+    Get-BitLockerVolume -ErrorAction SilentlyContinue |
+      Where-Object { $_.ProtectionStatus -eq 'On' } |
+      ForEach-Object {
+        Suspend-BitLocker -MountPoint $_.MountPoint -RebootCount 1 -ErrorAction SilentlyContinue | Out-Null
+        Write-Host ('BitLocker suspended for one reboot on {0}' -f $_.MountPoint) -ForegroundColor Green
+      }
+
+    Write-Host ('Set to boot into Safe Mode ({0}).' -f $arg) -ForegroundColor Yellow
+    Write-Host ''
+    Write-Host 'WRITE THIS DOWN BEFORE YOU RESTART:' -ForegroundColor Red
+    Write-Host '  From an admin prompt inside Safe Mode, to get back to normal:'
+    Write-Host '    bcdedit /deletevalue "{current}" safeboot'
+    Write-Host '  Or msconfig, Boot tab, untick Safe boot.'
+    Write-Host '  Without that, this machine boots into Safe Mode every single time.'
+  }
+
+  Write-Host ''
+  Write-Host 'Nothing has restarted. When you are ready:  shutdown /r /t 0'
+  bcdedit /enum "{current}" | Select-String 'safeboot|identifier|description'
+}
+
+Set-SafeBoot`);
+
+S('sysprep-handover','rebuild','Generalise a machine for somebody else',['admin','changes','risk'],
+'For a spare being passed on rather than wiped: <span class="mono">sysprep /generalize /oobe</span> strips the machine SID, the event logs and the restore points, and leaves it shutting down at the out-of-box setup screen, as if it had just come out of the carton.<br><br><b>It reports by default and needs <span class="mono">-Run</span> to act</b>, because the checks below are the ones that make it fail, and sysprep failing halfway leaves a machine that will not sysprep again.<br><br><b>What actually goes wrong:</b> a provisioned Store app updated for one user is the classic - sysprep stops with a fatal error and the reason is only in the log, which this points you at. Windows can also only be generalised a limited number of times; the remaining count is in <span class="mono">slmgr /dlv</span> and this reads it for you.<br><br><b>Do not sysprep an Entra-joined or Autopilot machine</b> that is still enrolled. Remove it from the tenant first, or you leave a ghost record and a device that argues with itself about who it is.',
+String.raw`
+function Invoke-Handover {
+  param([switch] $Run)
+
+  $admin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
+           ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+  if (-not $admin) { Write-Host 'Needs an elevated PowerShell.' -ForegroundColor Red; return }
+
+  $stop = @()
+
+  Write-Host ''
+  Write-Host '--- rearm count ---' -ForegroundColor Cyan
+  $dlv = cscript //nologo "$env:SystemRoot\System32\slmgr.vbs" /dlv 2>&1 | Out-String
+  $line = ($dlv -split '\r?\n') | Where-Object { $_ -match 'rearm' }
+  if ($line) { $line | ForEach-Object { Write-Host ('  ' + $_.Trim()) } }
+  else       { Write-Host '  could not read it - check manually with  slmgr /dlv' }
+
+  Write-Host ''
+  Write-Host '--- join state ---' -ForegroundColor Cyan
+  $ds = dsregcmd /status 2>&1 | Out-String
+  ($ds -split '\r?\n') | Where-Object { $_ -match 'AzureAdJoined|DomainJoined|TenantName' } |
+    ForEach-Object { Write-Host ('  ' + $_.Trim()) }
+  if ($ds -match 'AzureAdJoined\s*:\s*YES') {
+    $stop += 'Entra joined - remove it from the tenant before generalising, not after.'
+  }
+  if ((Get-CimInstance Win32_ComputerSystem).PartOfDomain) {
+    $stop += 'Domain joined - sysprep drops it out, so tidy up the computer object too.'
+  }
+
+  Write-Host ''
+  Write-Host '--- provisioned apps installed per-user, the usual cause of failure ---' -ForegroundColor Cyan
+  $prov = @(Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue)
+  $user = @(Get-AppxPackage -ErrorAction SilentlyContinue)
+  $risky = @($user | Where-Object { $n = $_.Name; $prov.DisplayName -contains $n } |
+             Select-Object -ExpandProperty Name -Unique)
+  Write-Host ('  {0} provisioned, {1} installed for you, {2} overlapping' -f $prov.Count, $user.Count, $risky.Count)
+  Write-Host '  Overlap alone is normal. It only bites when a version was updated for one user'
+  Write-Host '  and not the provisioned copy, and only the log tells you which.'
+
+  Write-Host ''
+  Write-Host '--- previous attempts ---' -ForegroundColor Cyan
+  $log = "$env:SystemRoot\System32\Sysprep\Panther\setupact.log"
+  if (Test-Path $log) {
+    Write-Host ('  log exists, last written {0}' -f (Get-Item $log).LastWriteTime)
+    Select-String -Path $log -Pattern 'Error|fatal' -ErrorAction SilentlyContinue |
+      Select-Object -Last 5 | ForEach-Object { Write-Host ('   ' + $_.Line.Trim()) -ForegroundColor Yellow }
+  } else { Write-Host '  no sysprep log - this machine has not been generalised before' }
+
+  Write-Host ''
+  if ($stop.Count) {
+    Write-Host 'DEAL WITH THESE FIRST:' -ForegroundColor Red
+    $stop | ForEach-Object { Write-Host ('  - ' + $_) -ForegroundColor Red }
+    Write-Host ''
+  }
+
+  if (-not $Run) {
+    Write-Host 'Reported only. Nothing has been done.' -ForegroundColor Cyan
+    Write-Host 'When the machine is ready and empty:  Invoke-Handover -Run'
+    return
+  }
+
+  Write-Host 'This shuts the machine down at the out-of-box setup screen.' -ForegroundColor Red
+  Write-Host 'Everything on it should already be gone or backed up.' -ForegroundColor Red
+  if ((Read-Host 'Type GENERALISE to go ahead').Trim() -ne 'GENERALISE') {
+    Write-Host 'Stopped.' -ForegroundColor Green; return
+  }
+
+  Write-Host ('If it fails, the reason is in {0}' -f $log) -ForegroundColor Yellow
+  & "$env:SystemRoot\System32\Sysprep\sysprep.exe" /generalize /oobe /shutdown
+}
+
+Invoke-Handover`);
+
 const GUIDES = [
+{id:'g-rebuild', title:'Rebuilding or retiring a machine', sub:'Reset, wipe, hand on - and what to do before any of it',
+ steps:[
+  'Work out what you are actually being asked for first. "Reset it" from a user usually means "make it work again", and a reset is the most expensive way to do that. If the machine is slow or broken rather than being handed on, go through that guide before this one.',
+  'Check a reset is even possible on this machine. Reset this PC and Advanced Startup both boot into the recovery environment, and on plenty of machines it has been switched off or lost. Finding that out after the user has agreed to lose everything is a bad afternoon. [[winre-check]]',
+  'Capture what you cannot get back. Serial, licence, join state, the BitLocker recovery key, how big each profile is and whether the sync client has actually finished. "It is all in the cloud" is something people believe, not something you checked. [[before-wipe]]',
+  'Repair before you rebuild, if the machine is coming back to the same person. It is far quicker than a reset and it keeps their setup. [[sfc-dism]] [[disk-reclaim]]',
+  'If you need to get into recovery or Safe Mode to try something first, do it properly - suspend BitLocker for the one reboot, and know the way back out before you go in. [[boot-advanced]] [[boot-safe]]',
+  'Reset with the user there. This is the normal route: they choose keep-my-files or remove-everything on screen, which is a decision they should be making rather than you. [[reset-attended]]',
+  'Wipe with nobody there, for a machine being collected, recovered from a leaver, or reset out of hours. Different mechanism entirely, and the mode you pick is the difference between a machine that comes back and one that does not boot. [[reset-unattended]]',
+  'Passing a spare on to somebody else rather than wiping it: generalise it so it comes up at the out-of-box screen with no trace of the last person. Take it out of the tenant first, not after. [[sysprep-handover]]',
+  'Close it out: serial and what you did on the ticket, the asset record updated, and the BitLocker key filed somewhere that is not a ticket comment.'
+ ]},
 {id:'g-software', title:'Software install or update request', sub:'Usually the biggest category of all',
  steps:[
   'This is a request, not a fault. Most of these come down to a standard user having no rights to install or update anything, so treat it as routine work rather than troubleshooting.',
@@ -4940,7 +5382,7 @@ const ICON = {
 const CAT_ICON = {
   info:'info', software:'bolt', mac:'mac', linux:'terminal', network:'net', cloud:'chat', ms365:'grid',
   security:'shield', perf:'slow', accounts:'user', remote:'screen', hardware:'chip',
-  updates:'sync', print:'print'
+  updates:'sync', print:'print', rebuild:'tool'
 };
 const TILE_ICON = {'g-software':'bolt','g-slow':'slow','g-vpn':'net','g-slack':'chat','g-mac':'mac',
                    'g-linux':'terminal','g-locked':'lock','g-disk':'file','g-suspicious':'shield'};
@@ -4981,6 +5423,13 @@ const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
    in it copies out as working code instead of a syntax error. */
 const subst = v => String(v).replace(/'/g, "''");
 const fill  = code => code.replace(/\{\{(\w+)\}\}/g, (m, k) => (k in vars ? subst(vars[k]) : m));
+
+/* The same substitution for prose. A title is read, not executed, so an
+   apostrophe in a value should stay as it is rather than be doubled the way a
+   single-quoted string needs. Six Linux titles carry a fill-in, and showing the
+   value in the heading is the last chance to notice the box was never changed
+   before you click Copy. */
+const fillText = t => String(t).replace(/\{\{(\w+)\}\}/g, (m, k) => (k in vars ? vars[k] : m));
 // Anything that is not PowerShell: it decides the shell label on the card, the
 // file extension on download and whether a shebang is prepended.
 const isShell = s => s.cat === 'mac' || s.cat === 'linux';
@@ -5072,7 +5521,7 @@ function scriptCard(s){
   const sh = isShell(s);
   return '<article class="card" id="s-' + s.id + '">' +
     '<div class="card-top"><div><div class="eyebrow">' + esc(c ? c.name : '') + '</div>' +
-      '<h3>' + esc(s.title) + '</h3></div>' +
+      '<h3>' + esc(fillText(s.title)) + '</h3></div>' +
       '<div class="badges">' + badgesFor(s) + '</div></div>' +
     '<p class="desc">' + s.desc + '</p>' +
     '<div class="codebox">' +
@@ -5099,7 +5548,7 @@ function guideCard(g, open){
     const html = st.replace(/\[\[([\w-]+)\]\]/g, (m, id) => {
       const s = activeScripts().find(x => x.id === id);
       return s ? '<span class="chip" data-goto="' + id + '" title="Show this script">' +
-                 esc(s.title.replace(/\s*\(uses \w+\)/, '')) + '</span>' : '';
+                 esc(fillText(s.title).replace(/\s*\(uses \w+\)/, '')) + '</span>' : '';
     });
     return '<li>' + html + '</li>';
   }).join('');
@@ -5199,13 +5648,21 @@ function homeView(){
 }
 
 function notesView(){
-  return headBlock('Ticket notes', 'Scratchpad for the job in hand. Saved in this browser only, so it is yours.') +
+  return headBlock('Ticket notes', 'Scratchpad for the job in hand. Nothing is sent anywhere.') +
     '<div class="panel"><div class="notes-row">' +
       '<button class="ghostbtn" id="nStamp">Add timestamp</button>' +
       '<button class="ghostbtn" id="nInfo">Add machine and user</button>' +
       '<button class="ghostbtn" id="nCopy">Copy all</button>' +
       '<button class="ghostbtn" id="nClear">Clear</button></div>' +
-    '<textarea id="notes" placeholder="What was reported, what you checked, what you changed, outcome..."></textarea></div>';
+    '<textarea id="notes" placeholder="What was reported, what you checked, what you changed, outcome..."></textarea></div>' +
+    '<div class="panel warn-panel"><h3>If this is not your machine</h3>' +
+      '<p>These notes, the fill-in values at the top and your favourites are stored in ' +
+      '<b>whichever browser you are sat in front of</b> - which, on a desk-side job, is usually ' +
+      'theirs. <b>Add machine and user</b> puts a name and a machine straight into the text. Leave ' +
+      'it there and the next person to open this site on that machine reads it.</p>' +
+      '<p>Nothing ever leaves the browser, so there is nothing to leak remotely. This is about ' +
+      'what you leave on the desk behind you.</p>' +
+      '<button class="ghostbtn danger" id="nWipe">Wipe everything this site has stored here</button></div>';
 }
 
 function wireNotes(){
@@ -5223,6 +5680,20 @@ function wireNotes(){
   $('#nInfo').onclick  = () => ins('Machine: ' + vars.COMPUTER + '   User: ' + vars.USER + '\n');
   $('#nCopy').onclick  = e => copyText(ta.value, e.currentTarget);
   $('#nClear').onclick = () => { if (confirm('Clear all notes?')){ ta.value = ''; store.set('notes', ''); } };
+
+  /* Everything this page stores is prefixed, so it can all go without touching
+     anything else the browser is keeping for that person. Reloading afterwards
+     is the honest way to show it worked: the page comes back as a stranger's. */
+  $('#nWipe').onclick = () => {
+    if (!confirm('Remove the ticket notes, the fill-in values, your favourites, the ' +
+                 'Google/Microsoft choice and the light/dark setting from this browser?\n\n' +
+                 'This cannot be undone, and it only affects this machine.')) return;
+    try {
+      Object.keys(localStorage).filter(k => k.indexOf('ittk_') === 0)
+        .forEach(k => localStorage.removeItem(k));
+    } catch (e) { }
+    location.reload();
+  };
 }
 
 function renderMain(){
@@ -5385,7 +5856,7 @@ document.addEventListener('click', e => {
   } else if (t.dataset.dl){
     const s = SCRIPTS.find(x => x.id === t.dataset.dl);
     const sh = isShell(s);
-    const head = (sh ? '#!/usr/bin/env bash\n' : '') + '# ' + s.title + '\n';
+    const head = (sh ? '#!/usr/bin/env bash\n' : '') + '# ' + fillText(s.title) + '\n';
     download(s.id + (sh ? '.sh' : '.ps1'), head + fill(s.code) + '\n', !sh);
   } else if (t.dataset.fav){
     const id = t.dataset.fav;
@@ -5441,7 +5912,7 @@ function palIndex(){
   activeGuides().forEach(g => out.push({ k:'guide', kind:'Fix-it guides', id:g.id,
     t:g.title, s:g.sub, blob:(g.title + ' ' + g.sub + ' ' + g.steps.join(' ')).toLowerCase() }));
   activeScripts().forEach(x => out.push({ k:'script', kind:'Scripts', id:x.id, code:x.code,
-    t:x.title, s:(catOf(x.cat) || { name:x.cat }).name,
+    t:fillText(x.title), s:(catOf(x.cat) || { name:x.cat }).name,
     blob:(x.title + ' ' + x.desc + ' ' + x.code + ' ' + x.cat).toLowerCase() }));
   UTILS.forEach(u => out.push({ k:'util', kind:'Utilities', id:u.id,
     t:u.name, s:u.blurb, blob:(u.name + ' ' + u.blurb + ' ' + u.desc).toLowerCase() }));

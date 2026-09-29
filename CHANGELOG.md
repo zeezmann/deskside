@@ -3,6 +3,141 @@
 All notable changes to this project are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.10.0] — 2026-09-29
+
+### Added - Rebuild & recovery, a new section of seven scripts
+
+The end of a machine's life on somebody's desk. 179 scripts to 186, and a new
+guide, **Rebuilding or retiring a machine**, that walks the whole job in order.
+
+**Will a reset actually work on this machine?** — `reagentc /info`, plus the
+recovery partitions and the BitLocker state. Reset this PC, Advanced Startup and
+Troubleshoot all boot into WinRE, and on plenty of machines it has been switched
+off or lost after a clone or a partition tidy-up. The failure is *Could not find
+the recovery environment*, and it arrives after the user has already agreed to
+lose everything.
+
+**Capture everything before you wipe** — serial, edition, licence channel,
+whether the OEM key is in firmware and will reactivate itself, join state, the
+BitLocker recovery key with the command to escrow it properly, every profile
+with its size, and whether a sync client is actually running. "It is all in the
+cloud" is something people believe, not something anybody checked.
+
+**Reset this PC, with somebody at the keyboard** — the supported route.
+`systemreset`, `systemreset -factoryreset`, or `shutdown /r /o` for Advanced
+Startup, chosen from a prompt after WinRE is confirmed present. Microsoft does
+not document the `systemreset` switches and there is no supported silent mode;
+the description says so rather than implying otherwise.
+
+**Wipe with nobody at the keyboard** — `MDM_RemoteWipe` in
+`root\CIMv2\MDM\DMMap`, the mechanism behind Intune's Wipe button, driven
+locally. All four documented methods, with the differences spelled out:
+`doWipeMethod`, `doWipePersistUserDataMethod`,
+`doWipePersistProvisionedDataMethod`, and `doWipeProtectedMethod` — which
+Microsoft's own docs warn can leave some configurations unable to boot.
+
+It reports and does nothing by default. Acting needs a named mode, this
+machine's own name typed back, and then the word WIPE.
+
+The class refuses anything short of SYSTEM, and Microsoft's documentation
+reaches for PsExec at that point. Sysinternals came out of this toolkit in 1.9.0
+and is not coming back, so it registers a scheduled task with a SYSTEM principal
+(by SID, `S-1-5-18`, which is not localised) and starts that instead. Nothing is
+downloaded.
+
+**Restart into recovery or Advanced Startup** — `shutdown /r /o` or
+`reagentc /boottore`, with BitLocker suspended for exactly one reboot so you are
+not hunting a 48-digit key to do a two-minute job.
+
+**Safe mode, and the way back out** — the way back out is in the name because it
+is the half that gets forgotten. Set safeboot without knowing how to clear it
+and you have built a machine that boots into Safe Mode forever. Also quotes
+`"{current}"`, without which PowerShell reads the braces as a script block and
+bcdedit never sees the argument.
+
+**Generalise a machine for somebody else** — `sysprep /generalize /oobe`, gated
+behind a readiness report: the remaining rearm count, the join state, the
+provisioned-app overlap that is the classic cause of failure, and any errors
+from a previous attempt in `Sysprep\Panther\setupact.log`.
+
+### Testing
+
+Eight new tests, covering the things that would be expensive to get wrong: every
+destructive script in the section is a function invoked on its last line rather
+than something a paste can fire; the wipe defaults to reporting and has two
+separate gates; the four method names match Microsoft's documentation exactly;
+`bcdedit` never sees an unquoted `{current}` and the way back out is always
+printed; anything that reboots into recovery suspends BitLocker first.
+
+76 tests, up from 68.
+
+## [1.9.2] — 2026-09-29
+
+Three things found by asking a different question of the page: not "is this
+correct" but "what happens when somebody uses it the way they actually will".
+
+### Fixed - a fill-in default that would have worked
+
+`SERVICE` defaulted to **nginx**. Forgetting to change a fill-in is the normal
+case, not the careless one - you are stood at someone else's desk with them
+watching you. Every other default fails safely when that happens: `PC-NAME` does
+not resolve, `203.0.113.10` is the RFC 5737 documentation range and is not
+routable, the example file is not in Public Downloads, and "Chrome" is not a
+winget package id so an uninstall with `-e` matches nothing.
+
+nginx is not a placeholder. It is the most deployed web server there is. Someone
+SSH'd into a production box, copying **Restart {{SERVICE}}** for a unit they had
+in mind and never touching the box, would have restarted the website.
+
+`USER` defaulted to **jsmith**, which is plausible enough to be a real account
+in a real tenant - and `ms-leaver` sets forwarding and delegation on it.
+
+Both are now `SERVICE-NAME` and `USER-NAME`. A forgotten box misses.
+
+`PROCESS` stays as `wermgr` and `APP` as `Chrome`, because nothing destructive
+takes a process and the winget exact-id match already fails on a bare app name.
+
+### Fixed - six titles rendered their fill-in as literal braces
+
+The card heading escaped the raw title instead of substituting it, so the six
+Linux scripts with a fill-in in the title displayed `Restart {{SERVICE}}` while
+the code underneath read `svc="nginx"`. A regression introduced with the Linux
+section in 1.8.
+
+Fixed by substituting for display, which is also the better answer to the item
+above: a heading that says **Restart SERVICE-NAME** makes a forgotten box
+obvious at the last moment you can still notice it. Titles now follow the box as
+you type. The search index keeps the raw title, so the word inside the braces
+still matches.
+
+Prose and code escape differently, and now do: a service called `o'brien` reads
+as itself in the heading and is doubled to `o''brien` inside the single-quoted
+string, where doubling is what stops it ending the string early.
+
+### Changed - the ticket notes told you the wrong thing about privacy
+
+The page said notes were "saved in this browser only, so it is yours". The first
+half is true and the second is false in the one workflow this page exists for:
+the browser is usually *theirs*, because you opened the site on the machine you
+are fixing. **Add machine and user** puts a name and a machine straight into the
+text, and it stays in that machine's browser profile for whoever opens the site
+next - along with the fill-in values and the favourites.
+
+Nothing ever leaves the browser, so there was never anything to leak remotely.
+This is about what gets left on the desk behind you, and the page now says that
+instead.
+
+### Added - wipe everything this site stored on this machine
+
+One button on the ticket notes page. Clears the notes, the fill-in values, the
+favourites, the Google/Microsoft choice and the theme, then reloads so the page
+comes back as a stranger. Keys are prefixed, so nothing else in that browser is
+touched - which a test asserts by planting an unrelated key and checking it
+survives.
+
+68 tests, up from 60. All eight new ones were run against the previous version
+first and all eight fail on it.
+
 ## [1.9.1] — 2026-09-28
 
 Two correctness fixes found by auditing rather than by using it.
